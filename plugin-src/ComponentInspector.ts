@@ -36,13 +36,10 @@ export class ComponentInspector {
         );
       })
       .filter(Boolean);
-    const interfaceString = Object.values(interfaces).join("\n\n");
-    const typesString = Object.keys(types)
-      .map((name) => `type ${name} = ${types[name]};`)
-      .join("\n\n");
     return {
-      ts: [typesString, interfaceString].join("\n\n"),
-      jsx: instances.join("\n\n"),
+      interfaces: Object.values(interfaces),
+      instances,
+      types: Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
       explicitBooleans: this.explicitBooleans,
       findText: this.findText,
       showDefaultValues: this.showDefaultValues,

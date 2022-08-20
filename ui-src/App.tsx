@@ -26,8 +26,9 @@ function App() {
     window.onmessage = ({
       data: {
         pluginMessage: {
-          ts,
-          jsx,
+          interfaces,
+          instances,
+          types,
           showDefaultValues,
           explicitBooleans,
           findText,
@@ -37,23 +38,27 @@ function App() {
       setDefaults(showDefaultValues);
       setBooleans(explicitBooleans);
       setText(findText);
+      const tsString = [types.join("\n\n"), interfaces.join("\n\n")].join(
+        "\n\n"
+      );
       setTs(
-        prettier.format(ts, {
+        prettier.format(tsString, {
           printWidth: 40,
           parser: "babel-ts",
           plugins: [parserBabel],
           semi: true,
         })
       );
+      const jsxString = instances.join("\n\n");
       setJsx(
         prettier
-          .format(`<>${jsx}</>`, {
+          .format(instances.length > 1 ? `<>${jsxString}</>` : jsxString, {
             printWidth: 40,
             parser: "babel-ts",
             plugins: [parserBabel],
             semi: true,
           })
-          .replace("</>;", "</>")
+          .replace(/;\n$/, "")
       );
     };
 
