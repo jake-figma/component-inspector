@@ -7,6 +7,13 @@ const downcase = (name: string) =>
 const propertyName = (name: string) =>
   downcase(name.replace(/#.*$/, "").replace(/ /g, ""));
 
+const booleanifyValue = (value: boolean | string) =>
+  ["true", true].includes(value.toString().toLowerCase());
+
+const variantOptionsAreBoolean = (variantOptions?: string[]) =>
+  variantOptions &&
+  variantOptions.sort().join("").toLowerCase() === "falsetrue";
+
 const componentNameFromName = (name: string) =>
   name
     .split(/[ _-]+/)
@@ -234,13 +241,10 @@ const castSafeComponentPropertyDefinition = (
   name: string
 ): SafeComponentPropertyDefinition => {
   const { type, defaultValue, variantOptions } = definitions[name];
-  if (
-    type === "VARIANT" &&
-    variantOptions?.sort().join("").toLowerCase() === "falsetrue"
-  ) {
+  if (type === "VARIANT" && variantOptionsAreBoolean(variantOptions)) {
     return {
       type: "BOOLEAN",
-      defaultValue: defaultValue.toString().toLowerCase() === "true",
+      defaultValue: booleanifyValue(defaultValue),
     };
   }
   switch (type) {
@@ -275,7 +279,7 @@ const castSafeComponentProperty = (
     case "BOOLEAN":
       return {
         type,
-        value: ["true", true].includes(value.toString().toLowerCase()),
+        value: booleanifyValue(value),
       };
     case "VARIANT":
     case "INSTANCE_SWAP":
