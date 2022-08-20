@@ -96,6 +96,16 @@ function App() {
     );
   }
 
+  const renderCode = (language: string, text: string) => (
+    <SyntaxHighlighter
+      customStyle={{ margin: 0 }}
+      language={language}
+      style={theme}
+    >
+      {text}
+    </SyntaxHighlighter>
+  );
+
   return (
     <>
       <header>
@@ -144,23 +154,7 @@ function App() {
         ) : null}
       </header>
       <main>
-        {tab === "ts" ? (
-          <SyntaxHighlighter
-            customStyle={{ margin: 0 }}
-            language="typescript"
-            style={theme}
-          >
-            {ts}
-          </SyntaxHighlighter>
-        ) : (
-          <SyntaxHighlighter
-            customStyle={{ margin: 0 }}
-            language="jsx"
-            style={theme}
-          >
-            {jsx}
-          </SyntaxHighlighter>
-        )}
+        {tab === "ts" ? renderCode("typescript", ts) : renderCode("jsx", jsx)}
       </main>
     </>
   );

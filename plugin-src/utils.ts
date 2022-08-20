@@ -51,6 +51,8 @@ function formatJsxProp(
   }
 }
 
+function checkReferences() {}
+
 function formatValueAsJsxProp(
   definitions: ComponentPropertyDefinitions,
   properties: ComponentProperties,
@@ -91,10 +93,10 @@ function formatDefinitionInterface(
   }
 }
 
-type RelevantComponentNodes = InstanceNode | ComponentNode;
+type RelevantComponentNode = InstanceNode | ComponentNode;
 
 function propertyDefinitionNodeFromNode(
-  node: RelevantComponentNodes
+  node: RelevantComponentNode
 ): ComponentSetNode | ComponentNode | null {
   switch (node.type) {
     case "COMPONENT":
@@ -107,7 +109,7 @@ function propertyDefinitionNodeFromNode(
 }
 
 export function extractTypesFromInstance(
-  node: RelevantComponentNodes,
+  node: RelevantComponentNode,
   interfaces: InterfaceDefinitionsObject,
   types: TypeDefinitionsObject
 ) {
@@ -134,8 +136,27 @@ export function extractTypesFromInstance(
   interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
 }
 
+function extractPropertyReferences(
+  node: RelevantComponentNode,
+  references: PropertyReverencesObject
+) {
+  const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
+  if (!referenceNode) {
+    return;
+  }
+  referenceNode.children.forEach((node) => {
+    if (node.componentPropertyReferences) {
+      // 'visible' | 'characters' | 'mainComponent'
+      const { visible, mainComponent } = node.componentPropertyReferences;
+      if (visible && mainComponent) {
+        references[mainComponent] = visible;
+      }
+    }
+  });
+}
+
 export function nodeToJsxTypeString(
-  node: RelevantComponentNodes,
+  node: RelevantComponentNode,
   showDefaults = false,
   explicitBoolean = false,
   findText = false
@@ -144,15 +165,18 @@ export function nodeToJsxTypeString(
   if (!propertyDefinitionsNode) {
     return "SOMETHING_BROKE";
   }
+  const references: PropertyReverencesObject = {};
+  extractPropertyReferences(node, references);
   const { componentPropertyDefinitions, name } = propertyDefinitionsNode;
   const textNode: TextNode | null = findText
     ? (node.children.find((c) => c.type === "TEXT") as TextNode) || null
     : null;
 
   const isInstance = node.type === "INSTANCE";
-  const keys = Object.keys(
-    isInstance ? node.componentProperties : componentPropertyDefinitions
-  ).filter(
+  const props = isInstance
+    ? node.componentProperties
+    : componentPropertyDefinitions;
+  const keys = Object.keys(props).filter(
     (key) =>
       showDefaults ||
       componentPropertyDefinitions[key].type === "INSTANCE_SWAP" ||
@@ -161,10 +185,18 @@ export function nodeToJsxTypeString(
           node.componentProperties[key].value)
   );
   const text = textNode?.characters || "";
-  const lines = keys
-    .sort()
-    .map((name) =>
-      isInstance
+  const isReferenceChecked = (name: string) => {
+    const key = references[name];
+    if (!key) {
+      return true;
+    }
+    return isInstance
+      ? node.componentProperties[references[name]]?.value
+      : componentPropertyDefinitions[references[name]]?.defaultValue;
+  };
+  const formatMap = (name: string) =>
+    isReferenceChecked(name)
+      ? isInstance
         ? formatValueAsJsxProp(
             componentPropertyDefinitions,
             node.componentProperties,
@@ -176,8 +208,8 @@ export function nodeToJsxTypeString(
             name,
             explicitBoolean
           )
-    )
-    .filter(Boolean);
+      : null;
+  const lines = keys.sort().map(formatMap).filter(Boolean);
   const n = componentNameFromName(name);
   return `<${n} ${lines.join(" ")} ${text ? `>${text}</${n}>` : `/>`}`;
 }
@@ -185,7 +217,7 @@ export function nodeToJsxTypeString(
 // Filtering nodes to instances and components that are not variant comonents
 export function componentNodesFromSceneNodes(
   nodes: SceneNode[]
-): RelevantComponentNodes[] {
+): RelevantComponentNode[] {
   return nodes
     .filter(
       (n) =>
@@ -204,6 +236,7 @@ export function componentNodesFromSceneNodes(
 }
 
 export type InterfaceDefinitionsObject = { [k: string]: string };
+export type PropertyReverencesObject = { [k: string]: string };
 export type TypeDefinitionsObject = { [k: string]: string };
 
 interface SafeComponentPropertyDefinitionBoolean {
