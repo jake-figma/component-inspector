@@ -1,7 +1,11 @@
 const capitalize = (name: string) =>
   `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 
-const cleanName = (name: string) => name.replace(/#.*$/, "");
+const downcase = (name: string) =>
+  `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+
+const propertyName = (name: string) =>
+  downcase(name.replace(/#.*$/, "").replace(/ /g, ""));
 
 const componentNameFromName = (name: string) =>
   name
@@ -14,7 +18,7 @@ function formatJsxProp(
   name: string,
   explicitBoolean: boolean
 ) {
-  const clean = cleanName(name);
+  const clean = propertyName(name);
   const { type } = propertyOrDefinition;
   if (type === "BOOLEAN") {
     const value =
@@ -29,7 +33,7 @@ function formatJsxProp(
         : propertyOrDefinition.defaultValue;
     const node = figma.getNodeById(value);
     return node
-      ? `${clean}={<${capitalize(node.name)} />}`
+      ? `${clean}={<${componentNameFromName(node.name)} />}`
       : `${clean}="${value}"`;
   } else {
     const value =
@@ -67,7 +71,7 @@ function formatDefinitionInterface(
   if (definition.type === "BOOLEAN") {
     return "boolean";
   } else if (definition.type === "VARIANT") {
-    const name = `${interfaceName}${capitalize(propName)}`;
+    const name = `${interfaceName}${componentNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
       .map((o) => `'${o}'`)
       .join(" | ");
@@ -110,7 +114,7 @@ export function extractTypesFromInstance(
     .sort()
     .map(
       (propName) =>
-        `${cleanName(propName)}: ${formatDefinitionInterface(
+        `${propertyName(propName)}: ${formatDefinitionInterface(
           interfaceName,
           propName,
           types,
@@ -230,10 +234,13 @@ const castSafeComponentPropertyDefinition = (
   name: string
 ): SafeComponentPropertyDefinition => {
   const { type, defaultValue, variantOptions } = definitions[name];
-  if (type === "VARIANT" && variantOptions?.sort().join("") === "falsetrue") {
+  if (
+    type === "VARIANT" &&
+    variantOptions?.sort().join("").toLowerCase() === "falsetrue"
+  ) {
     return {
       type: "BOOLEAN",
-      defaultValue: defaultValue === "true",
+      defaultValue: defaultValue.toString().toLowerCase() === "true",
     };
   }
   switch (type) {
@@ -268,7 +275,7 @@ const castSafeComponentProperty = (
     case "BOOLEAN":
       return {
         type,
-        value: ["true", true].includes(value),
+        value: ["true", true].includes(value.toString().toLowerCase()),
       };
     case "VARIANT":
     case "INSTANCE_SWAP":
