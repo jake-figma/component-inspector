@@ -8,6 +8,16 @@ import prettier from "prettier/esm/standalone.mjs";
 import parserBabel from "prettier/esm/parser-babel.mjs";
 import "./App.css";
 
+const prettierOptions = {
+  printWidth: 40,
+  parser: "babel-ts",
+  plugins: [parserBabel],
+  semi: true,
+};
+
+const joiner = (items: string[][]) =>
+  items.map((i) => i.join("\n\n")).join("\n\n");
+
 const detectLightMode = () =>
   document.documentElement.classList.contains("figma-light");
 
@@ -38,28 +48,13 @@ function App() {
       setDefaults(showDefaultValues);
       setBooleans(explicitBooleans);
       setText(findText);
-      const tsString = [types.join("\n\n"), interfaces.join("\n\n")].join(
-        "\n\n"
-      );
-      setTs(
-        prettier.format(tsString, {
-          printWidth: 40,
-          parser: "babel-ts",
-          plugins: [parserBabel],
-          semi: true,
-        })
-      );
-      const jsxString = instances.join("\n\n");
-      setJsx(
-        prettier
-          .format(instances.length > 1 ? `<>${jsxString}</>` : jsxString, {
-            printWidth: 40,
-            parser: "babel-ts",
-            plugins: [parserBabel],
-            semi: true,
-          })
-          .replace(/;\n$/, "")
-      );
+      const tsString = joiner([types, interfaces]);
+      setTs(prettier.format(tsString, prettierOptions));
+      const jsxString =
+        instances.length > 1
+          ? `<>${joiner([instances])}</>`
+          : joiner([instances]);
+      setJsx(prettier.format(jsxString, prettierOptions).replace(/;\n$/, ""));
     };
 
     const ping = () =>
