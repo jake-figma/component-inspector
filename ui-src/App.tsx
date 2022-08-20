@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { tomorrow as theme } from "react-syntax-highlighter/dist/esm/styles/prism";
+import {
+  tomorrow as themeDark,
+  materialLight as themeLight,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 import prettier from "prettier/esm/standalone.mjs";
 import parserBabel from "prettier/esm/parser-babel.mjs";
 import "./App.css";
+
+const detectLightMode = () =>
+  document.documentElement.classList.contains("figma-light");
 
 function App() {
   const [ts, setTs] = useState<string>("");
@@ -11,15 +17,26 @@ function App() {
   const [tab, setTab] = useState<"ts" | "jsx">("jsx");
   const [defaults, setDefaults] = useState(true);
   const [booleans, setBooleans] = useState(false);
+  const [text, setText] = useState(false);
+  const [theme, setTheme] = useState<{ [key: string]: React.CSSProperties }>(
+    detectLightMode() ? themeLight : themeDark
+  );
 
   useEffect(() => {
     window.onmessage = ({
       data: {
-        pluginMessage: { ts, jsx, showDefaultValues, explicitBooleans },
+        pluginMessage: {
+          ts,
+          jsx,
+          showDefaultValues,
+          explicitBooleans,
+          findText,
+        },
       },
     }) => {
       setDefaults(showDefaultValues);
       setBooleans(explicitBooleans);
+      setText(findText);
       setTs(
         prettier.format(ts, {
           printWidth: 40,
@@ -39,17 +56,31 @@ function App() {
           .replace("</>;", "</>")
       );
     };
-    function ping() {
+
+    const ping = () =>
       parent.postMessage({ pluginMessage: { type: "PING" } }, "*");
-    }
     setInterval(ping, 500);
+
+    const stylesheet = document.getElementById(
+      "figma-style"
+    ) as HTMLStyleElement;
+
+    if (stylesheet) {
+      setTheme(detectLightMode() ? themeLight : themeDark);
+      const observer = new MutationObserver(() => {
+        setTheme(detectLightMode() ? themeLight : themeDark);
+      });
+      observer.observe(stylesheet, { childList: true });
+    }
   }, []);
 
   function sendSettings({
     defaults,
+    text,
     booleans,
   }: {
     defaults: boolean;
+    text: boolean;
     booleans: boolean;
   }) {
     parent.postMessage(
@@ -57,6 +88,7 @@ function App() {
         pluginMessage: {
           type: "SETTINGS",
           explicitBooleans: booleans,
+          findText: text,
           showDefaultValues: defaults,
         },
       },
@@ -86,16 +118,27 @@ function App() {
           <div>
             <button
               className={defaults ? "brand" : ""}
-              onClick={() => sendSettings({ defaults: !defaults, booleans })}
+              onClick={() =>
+                sendSettings({ defaults: !defaults, text, booleans })
+              }
             >
               Defaults
             </button>
             &nbsp;
             <button
               className={booleans ? "brand" : ""}
-              onClick={() => sendSettings({ defaults, booleans: !booleans })}
+              onClick={() =>
+                sendSettings({ defaults, text, booleans: !booleans })
+              }
             >
               Booleans
+            </button>
+            &nbsp;
+            <button
+              className={text ? "brand" : ""}
+              onClick={() => sendSettings({ defaults, text: !text, booleans })}
+            >
+              Text
             </button>
           </div>
         ) : null}

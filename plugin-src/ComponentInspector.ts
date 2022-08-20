@@ -8,10 +8,16 @@ import {
 
 export class ComponentInspector {
   explicitBooleans = false;
+  findText = false;
   showDefaultValues = true;
 
-  constructor(explicitBooleans: boolean, showDefaultValues: boolean) {
+  constructor(
+    explicitBooleans: boolean,
+    findText: boolean,
+    showDefaultValues: boolean
+  ) {
     this.explicitBooleans = explicitBooleans;
+    this.findText = findText;
     this.showDefaultValues = showDefaultValues;
   }
 
@@ -25,7 +31,8 @@ export class ComponentInspector {
         return nodeToJsxTypeString(
           instance,
           this.showDefaultValues,
-          this.explicitBooleans
+          this.explicitBooleans,
+          this.findText
         );
       })
       .filter(Boolean);
@@ -37,6 +44,7 @@ export class ComponentInspector {
       ts: [typesString, interfaceString].join("\n\n"),
       jsx: instances.join("\n\n"),
       explicitBooleans: this.explicitBooleans,
+      findText: this.findText,
       showDefaultValues: this.showDefaultValues,
     };
   }

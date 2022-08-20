@@ -137,15 +137,17 @@ export function extractTypesFromInstance(
 export function nodeToJsxTypeString(
   node: RelevantComponentNodes,
   showDefaults = false,
-  explicitBoolean = false
+  explicitBoolean = false,
+  findText = false
 ) {
   const propertyDefinitionsNode = propertyDefinitionNodeFromNode(node);
   if (!propertyDefinitionsNode) {
     return "SOMETHING_BROKE";
   }
   const { componentPropertyDefinitions, name } = propertyDefinitionsNode;
-  const textNode: TextNode | null =
-    (node.children.find((c) => c.type === "TEXT") as TextNode) || null;
+  const textNode: TextNode | null = findText
+    ? (node.children.find((c) => c.type === "TEXT") as TextNode) || null
+    : null;
 
   const isInstance = node.type === "INSTANCE";
   const keys = Object.keys(
