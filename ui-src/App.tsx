@@ -57,10 +57,6 @@ function App() {
       setJsx(prettier.format(jsxString, prettierOptions).replace(/;\n$/, ""));
     };
 
-    const ping = () =>
-      parent.postMessage({ pluginMessage: { type: "PING" } }, "*");
-    setInterval(ping, 500);
-
     const stylesheet = document.getElementById(
       "figma-style"
     ) as HTMLStyleElement;

@@ -11,8 +11,13 @@ const booleanifyValue = (value: boolean | string) =>
   ["true", true].includes(value.toString().toLowerCase());
 
 const variantOptionsAreBoolean = (variantOptions?: string[]) =>
-  variantOptions &&
-  variantOptions.sort().join("").toLowerCase() === "falsetrue";
+  Boolean(
+    variantOptions &&
+      variantOptions.sort().join("").toLowerCase() === "falsetrue"
+  );
+
+const variantOptionsAreNumeric = (variantOptions?: string[]) =>
+  Boolean(variantOptions && variantOptions.join("").match(/^\d+$/));
 
 const componentNameFromName = (name: string) =>
   name
@@ -50,8 +55,6 @@ function formatJsxProp(
     return `${clean}="${value}"`;
   }
 }
-
-function checkReferences() {}
 
 function formatValueAsJsxProp(
   definitions: ComponentPropertyDefinitions,
@@ -276,12 +279,19 @@ const castSafeComponentPropertyDefinition = (
   name: string
 ): SafeComponentPropertyDefinition => {
   const { type, defaultValue, variantOptions } = definitions[name];
-  if (type === "VARIANT" && variantOptionsAreBoolean(variantOptions)) {
-    return {
-      type: "BOOLEAN",
-      defaultValue: booleanifyValue(defaultValue),
-    };
-  }
+  if (type === "VARIANT")
+    if (variantOptionsAreBoolean(variantOptions)) {
+      return {
+        type: "BOOLEAN",
+        defaultValue: booleanifyValue(defaultValue),
+      };
+    } else if (false && variantOptionsAreNumeric(variantOptions)) {
+      // introduce number type?
+      return {
+        type: "BOOLEAN",
+        defaultValue: booleanifyValue(defaultValue),
+      };
+    }
   switch (type) {
     case "VARIANT":
       return {
