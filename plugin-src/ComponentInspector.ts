@@ -1,10 +1,5 @@
-import {
-  componentNodesFromSceneNodes,
-  extractTypesFromInstance,
-  nodeToJsxTypeString,
-  InterfaceDefinitionsObject,
-  TypeDefinitionsObject,
-} from "./utils";
+import ComponentAdapter from "./ComponentAdapter";
+import { componentNodesFromSceneNodes, extractDataFromAdapter } from "./utils";
 
 export class ComponentInspector {
   explicitBooleans = false;
@@ -23,20 +18,19 @@ export class ComponentInspector {
 
   process(nodes: SceneNode[]) {
     const relevantNodes = componentNodesFromSceneNodes(nodes);
-    const types: TypeDefinitionsObject = {};
-    const interfaces: InterfaceDefinitionsObject = {};
-    const instances = relevantNodes
-      .map((instance) => {
-        extractTypesFromInstance(instance, interfaces, types);
-        return nodeToJsxTypeString(
-          instance,
-          this.showDefaultValues,
-          this.explicitBooleans,
-          this.findText
-        );
-      })
-      .filter(Boolean);
+
+    const adapter = new ComponentAdapter();
+
+    relevantNodes.forEach((node) => adapter.add(node));
+    const { instances, interfaces, types } = extractDataFromAdapter(
+      adapter,
+      this.showDefaultValues,
+      this.explicitBooleans,
+      this.findText
+    );
+    const json = JSON.stringify(adapter.json(), null, 2);
     return {
+      json,
       interfaces: Object.values(interfaces),
       instances,
       types: Object.keys(types).map((name) => `type ${name} = ${types[name]};`),

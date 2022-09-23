@@ -24,7 +24,8 @@ const detectLightMode = () =>
 function App() {
   const [ts, setTs] = useState<string>("");
   const [jsx, setJsx] = useState<string>("");
-  const [tab, setTab] = useState<"ts" | "jsx">("jsx");
+  const [json, setJson] = useState<string>("");
+  const [tab, setTab] = useState<"ts" | "jsx" | "json">("jsx");
   const [defaults, setDefaults] = useState(true);
   const [booleans, setBooleans] = useState(false);
   const [text, setText] = useState(false);
@@ -36,6 +37,8 @@ function App() {
     window.onmessage = ({
       data: {
         pluginMessage: {
+          type,
+          json,
           interfaces,
           instances,
           types,
@@ -48,13 +51,16 @@ function App() {
       setDefaults(showDefaultValues);
       setBooleans(explicitBooleans);
       setText(findText);
-      const tsString = joiner([types, interfaces]);
-      setTs(prettier.format(tsString, prettierOptions));
-      const jsxString =
-        instances.length > 1
-          ? `<>${joiner([instances])}</>`
-          : joiner([instances]);
-      setJsx(prettier.format(jsxString, prettierOptions).replace(/;\n$/, ""));
+      if (type === "RESULT") {
+        const tsString = joiner([types, interfaces]);
+        setTs(prettier.format(tsString, prettierOptions));
+        const jsxString =
+          instances.length > 1
+            ? `<>${joiner([instances])}</>`
+            : joiner([instances]);
+        setJsx(prettier.format(jsxString, prettierOptions).replace(/;\n$/, ""));
+        setJson(json);
+      }
     };
 
     const stylesheet = document.getElementById(
@@ -107,7 +113,7 @@ function App() {
       <header>
         <div>
           <button
-            className={tab === "ts" ? "" : "brand"}
+            className={tab === "jsx" ? "brand" : ""}
             onClick={() => setTab("jsx")}
           >
             Components
@@ -118,6 +124,13 @@ function App() {
             onClick={() => setTab("ts")}
           >
             Types
+          </button>
+          &nbsp;
+          <button
+            className={tab === "json" ? "brand" : ""}
+            onClick={() => setTab("json")}
+          >
+            JSON
           </button>
         </div>
         {tab === "jsx" ? (
@@ -150,7 +163,9 @@ function App() {
         ) : null}
       </header>
       <main>
-        {tab === "ts" ? renderCode("typescript", ts) : renderCode("jsx", jsx)}
+        {tab === "ts" ? renderCode("typescript", ts) : null}
+        {tab === "jsx" ? renderCode("jsx", jsx) : null}
+        {tab === "json" ? renderCode("json", json) : null}
       </main>
     </>
   );

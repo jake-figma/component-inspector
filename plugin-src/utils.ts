@@ -1,87 +1,71 @@
+import ComponentAdapter, {
+  SafeComponent,
+  SafeProperty,
+  SafePropertyDefinition,
+} from "./ComponentAdapter";
+
 const capitalize = (name: string) =>
   `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 
 const downcase = (name: string) =>
   `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
 
-const propertyName = (name: string) =>
-  downcase(name.replace(/#.*$/, "").replace(/ /g, ""));
-
-const booleanifyValue = (value: boolean | string) =>
-  ["true", true].includes(value.toString().toLowerCase());
-
-const variantOptionsAreBoolean = (variantOptions?: string[]) =>
-  Boolean(
-    variantOptions &&
-      variantOptions.sort().join("").toLowerCase() === "falsetrue"
-  );
-
-const variantOptionsAreNumeric = (variantOptions?: string[]) =>
-  Boolean(variantOptions && variantOptions.join("").match(/^\d+$/));
-
-const componentNameFromName = (name: string) =>
-  name
+export function componentNameFromName(name: string) {
+  return name
     .split(/[ _-]+/)
     .map(capitalize)
     .join("");
+}
+export const propertyNameFromKey = (name: string) =>
+  downcase(name.replace(/#.*$/, "").replace(/ /g, ""));
+
+export function asBoolean(string: string) {
+  return { false: false, true: true }[string.toLowerCase()] === true;
+}
+export function isBoolean(string: string) {
+  return ["false", "true"].includes(string.toLowerCase());
+}
+export function asNumber(string: string) {
+  return parseFloat(string);
+}
+export function isNumber(string: string) {
+  return Boolean(string.match(/^\d*\.?\d+$/));
+}
 
 function formatJsxProp(
-  propertyOrDefinition: SafeComponentProperty | SafeComponentPropertyDefinition,
+  property: SafeProperty,
   name: string,
   explicitBoolean: boolean
 ) {
-  const clean = propertyName(name);
-  const { type } = propertyOrDefinition;
-  if (type === "BOOLEAN") {
-    const value =
-      "value" in propertyOrDefinition
-        ? propertyOrDefinition.value
-        : propertyOrDefinition.defaultValue;
-    return explicitBoolean ? `${clean}={${value}}` : value ? clean : "";
-  } else if (type === "INSTANCE_SWAP") {
-    const value =
-      "value" in propertyOrDefinition
-        ? propertyOrDefinition.value
-        : propertyOrDefinition.defaultValue;
-    const node = figma.getNodeById(value);
+  const clean = propertyNameFromKey(name);
+  if (property.type === "BOOLEAN") {
+    return explicitBoolean
+      ? `${clean}={${property.value}}`
+      : property.value
+      ? clean
+      : "";
+  } else if (property.type === "INSTANCE_SWAP") {
+    const node = figma.getNodeById(property.value);
     return node
       ? `${clean}={<${componentNameFromName(node.name)} />}`
-      : `${clean}="${value}"`;
+      : `${clean}="${property.value}"`;
   } else {
-    const value =
-      "value" in propertyOrDefinition
-        ? propertyOrDefinition.value
-        : propertyOrDefinition.defaultValue;
-    return `${clean}="${value}"`;
+    return `${clean}="${property.value}"`;
   }
-}
-
-function formatValueAsJsxProp(
-  definitions: ComponentPropertyDefinitions,
-  properties: ComponentProperties,
-  name: string,
-  explicitBoolean = false
-) {
-  const property = castSafeComponentProperty(definitions, properties, name);
-  return formatJsxProp(property, name, explicitBoolean);
-}
-function formatDefaultValueAsJsxProp(
-  definitions: ComponentPropertyDefinitions,
-  name: string,
-  explicitBoolean = false
-) {
-  const definition = castSafeComponentPropertyDefinition(definitions, name);
-  return formatJsxProp(definition, name, explicitBoolean);
 }
 
 function formatDefinitionInterface(
   interfaceName: string,
   propName: string,
   types: TypeDefinitionsObject,
-  definition: SafeComponentPropertyDefinition
+  definition: SafePropertyDefinition
 ) {
   if (definition.type === "BOOLEAN") {
     return "boolean";
+  } else if (definition.type === "NUMBER") {
+    return "number";
+  } else if (definition.type === "TEXT") {
+    return "string";
   } else if (definition.type === "VARIANT") {
     const name = `${interfaceName}${componentNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
@@ -89,6 +73,8 @@ function formatDefinitionInterface(
       .join(" | ");
     types[name] = value;
     return name;
+  } else if (definition.type === "EXPLICIT") {
+    return definition.defaultValue;
   } else if (definition.type === "INSTANCE_SWAP") {
     return "React.ReactNode";
   } else {
@@ -98,122 +84,102 @@ function formatDefinitionInterface(
 
 type RelevantComponentNode = InstanceNode | ComponentNode;
 
-function propertyDefinitionNodeFromNode(
-  node: RelevantComponentNode
-): ComponentSetNode | ComponentNode | null {
-  switch (node.type) {
-    case "COMPONENT":
-      return node;
-    case "INSTANCE":
-      return node.mainComponent?.parent
-        ? (node.mainComponent?.parent as ComponentSetNode)
-        : null;
-  }
-}
-
-export function extractTypesFromInstance(
-  node: RelevantComponentNode,
-  interfaces: InterfaceDefinitionsObject,
-  types: TypeDefinitionsObject
-) {
-  const propertyDefinitionsNode = propertyDefinitionNodeFromNode(node);
-  if (!propertyDefinitionsNode) {
-    return null;
-  }
-  const { componentPropertyDefinitions, name, key } = propertyDefinitionsNode;
-  const interfaceName = `${componentNameFromName(name)}Props`;
-  const lines = Object.keys(componentPropertyDefinitions)
-    .sort()
-    .map(
-      (propName) =>
-        `${propertyName(propName)}: ${formatDefinitionInterface(
-          interfaceName,
-          propName,
-          types,
-          castSafeComponentPropertyDefinition(
-            componentPropertyDefinitions,
-            propName
-          )
-        )};`
-    );
-  interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
-}
-
-function extractPropertyReferences(
-  node: RelevantComponentNode,
-  references: PropertyReverencesObject
-) {
-  const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
-  if (!referenceNode) {
-    return;
-  }
-  referenceNode.children.forEach((node) => {
-    if (node.componentPropertyReferences) {
-      // 'visible' | 'characters' | 'mainComponent'
-      const { visible, mainComponent } = node.componentPropertyReferences;
-      if (visible && mainComponent) {
-        references[mainComponent] = visible;
-      }
-    }
-  });
-}
-
-export function nodeToJsxTypeString(
-  node: RelevantComponentNode,
+export function extractDataFromAdapter(
+  adapter: ComponentAdapter,
   showDefaults = false,
   explicitBoolean = false,
   findText = false
 ) {
-  const propertyDefinitionsNode = propertyDefinitionNodeFromNode(node);
-  if (!propertyDefinitionsNode) {
-    return "SOMETHING_BROKE";
-  }
-  const references: PropertyReverencesObject = {};
-  extractPropertyReferences(node, references);
-  const { componentPropertyDefinitions, name } = propertyDefinitionsNode;
+  const { types, interfaces } = extractTypesFromAdapter(adapter);
+  const instances = extractInstancesFromAdapter(
+    adapter,
+    showDefaults,
+    explicitBoolean,
+    findText
+  );
+  return { instances, types, interfaces };
+}
+
+function extractTypesFromAdapter({ definitions, metas }: ComponentAdapter) {
+  const types: TypeDefinitionsObject = {};
+  const interfaces: InterfaceDefinitionsObject = {};
+  Object.keys(definitions).forEach((key) => {
+    const properties = definitions[key];
+    const interfaceName = `${componentNameFromName(metas[key].name)}Props`;
+    const lines = Object.keys(properties)
+      .sort()
+      .map(
+        (propName) =>
+          `${propertyNameFromKey(propName)}: ${formatDefinitionInterface(
+            interfaceName,
+            propName,
+            types,
+            properties[propName]
+          )};`
+      );
+    interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
+  });
+  return { types, interfaces };
+}
+
+function extractInstancesFromAdapter(
+  adapter: ComponentAdapter,
+  showDefaults: boolean,
+  explicitBoolean: boolean,
+  findText: boolean
+) {
+  const { components } = adapter;
+  return Object.values(components).map((component) =>
+    componentToJsxTypeString(
+      component,
+      adapter,
+      showDefaults,
+      explicitBoolean,
+      findText
+    )
+  );
+}
+
+function componentToJsxTypeString(
+  component: SafeComponent,
+  adapter: ComponentAdapter,
+  showDefaults = false,
+  explicitBoolean = false,
+  findText = false
+) {
+  const definitions = adapter.definitions[component.definition];
+  const meta = adapter.metas[component.definition];
+  const node = figma.getNodeById(component.id) as ComponentNode | InstanceNode;
+
   const textNode: TextNode | null = findText
     ? (node.children.find((c) => c.type === "TEXT") as TextNode) || null
     : null;
 
   const isInstance = node.type === "INSTANCE";
-  const props = isInstance
-    ? node.componentProperties
-    : componentPropertyDefinitions;
-  const keys = Object.keys(props).filter(
+  const keys = Object.keys(component.properties).filter(
     (key) =>
       showDefaults ||
-      componentPropertyDefinitions[key].type === "INSTANCE_SWAP" ||
+      definitions[key].type === "INSTANCE_SWAP" ||
       (isInstance &&
-        componentPropertyDefinitions[key].defaultValue !==
-          node.componentProperties[key].value)
+        definitions[key].defaultValue !== node.componentProperties[key].value)
   );
   const text = textNode?.characters || "";
   const isReferenceChecked = (name: string) => {
-    const key = references[name];
+    const key = adapter.references[name]?.visible;
     if (!key) {
       return true;
     }
+    const visible = adapter.references[name]?.visible || "";
     return isInstance
-      ? node.componentProperties[references[name]]?.value
-      : componentPropertyDefinitions[references[name]]?.defaultValue;
+      ? node.componentProperties[visible]?.value
+      : definitions[visible]?.defaultValue;
   };
   const formatMap = (name: string) =>
     isReferenceChecked(name)
-      ? isInstance
-        ? formatValueAsJsxProp(
-            componentPropertyDefinitions,
-            node.componentProperties,
-            name,
-            explicitBoolean
-          )
-        : formatDefaultValueAsJsxProp(
-            componentPropertyDefinitions,
-            name,
-            explicitBoolean
-          )
+      ? formatJsxProp(component.properties[name], name, explicitBoolean)
       : null;
   const lines = keys.sort().map(formatMap).filter(Boolean);
-  const n = componentNameFromName(name);
+  const n = componentNameFromName(meta.name);
   return `<${n} ${lines.join(" ")} ${text ? `>${text}</${n}>` : `/>`}`;
 }
 
@@ -238,100 +204,5 @@ export function componentNodesFromSceneNodes(
     });
 }
 
-export type InterfaceDefinitionsObject = { [k: string]: string };
-export type PropertyReverencesObject = { [k: string]: string };
-export type TypeDefinitionsObject = { [k: string]: string };
-
-interface SafeComponentPropertyDefinitionBoolean {
-  type: Extract<ComponentPropertyType, "BOOLEAN">;
-  defaultValue: boolean;
-}
-interface SafeComponentPropertyDefinitionTextAndInstanceSwap {
-  type: Extract<ComponentPropertyType, "TEXT" | "INSTANCE_SWAP">;
-  defaultValue: string;
-}
-interface SafeComponentPropertyDefinitionVariant {
-  type: Extract<ComponentPropertyType, "VARIANT">;
-  defaultValue: string;
-  variantOptions: string[];
-}
-
-type SafeComponentPropertyDefinition =
-  | SafeComponentPropertyDefinitionBoolean
-  | SafeComponentPropertyDefinitionTextAndInstanceSwap
-  | SafeComponentPropertyDefinitionVariant;
-
-interface SafeComponentPropertyBoolean {
-  type: Extract<ComponentPropertyType, "BOOLEAN">;
-  value: boolean;
-}
-interface SafeComponentPropertyTextAndInstanceSwapAndVariant {
-  type: Extract<ComponentPropertyType, "TEXT" | "INSTANCE_SWAP" | "VARIANT">;
-  value: string;
-}
-
-type SafeComponentProperty =
-  | SafeComponentPropertyBoolean
-  | SafeComponentPropertyTextAndInstanceSwapAndVariant;
-
-const castSafeComponentPropertyDefinition = (
-  definitions: ComponentPropertyDefinitions,
-  name: string
-): SafeComponentPropertyDefinition => {
-  const { type, defaultValue, variantOptions } = definitions[name];
-  if (type === "VARIANT")
-    if (variantOptionsAreBoolean(variantOptions)) {
-      return {
-        type: "BOOLEAN",
-        defaultValue: booleanifyValue(defaultValue),
-      };
-    } else if (false && variantOptionsAreNumeric(variantOptions)) {
-      // introduce number type?
-      return {
-        type: "BOOLEAN",
-        defaultValue: booleanifyValue(defaultValue),
-      };
-    }
-  switch (type) {
-    case "VARIANT":
-      return {
-        type,
-        defaultValue: defaultValue as string,
-        variantOptions: variantOptions as string[],
-      };
-    case "BOOLEAN":
-      return {
-        type,
-        defaultValue: defaultValue as boolean,
-      };
-    case "INSTANCE_SWAP":
-    case "TEXT":
-      return {
-        type,
-        defaultValue: defaultValue as string,
-      };
-  }
-};
-
-const castSafeComponentProperty = (
-  definitions: ComponentPropertyDefinitions,
-  properties: ComponentProperties,
-  name: string
-): SafeComponentProperty => {
-  const { type } = castSafeComponentPropertyDefinition(definitions, name);
-  const { value } = properties[name];
-  switch (type) {
-    case "BOOLEAN":
-      return {
-        type,
-        value: booleanifyValue(value),
-      };
-    case "VARIANT":
-    case "INSTANCE_SWAP":
-    case "TEXT":
-      return {
-        type,
-        value: value as string,
-      };
-  }
-};
+type InterfaceDefinitionsObject = { [k: string]: string };
+type TypeDefinitionsObject = { [k: string]: string };
