@@ -24,6 +24,13 @@ export default class ComponentAdapter {
     );
   }
 
+  clear() {
+    this.metas = {};
+    this.definitions = {};
+    this.components = {};
+    this.references = {};
+  }
+
   json() {
     return {
       components: this.components,

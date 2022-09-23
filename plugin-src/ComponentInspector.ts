@@ -5,6 +5,7 @@ export class ComponentInspector {
   explicitBooleans = false;
   findText = false;
   showDefaultValues = true;
+  adapter = new ComponentAdapter();
 
   constructor(
     explicitBooleans: boolean,
@@ -17,18 +18,17 @@ export class ComponentInspector {
   }
 
   process(nodes: SceneNode[]) {
+    this.adapter.clear();
     const relevantNodes = componentNodesFromSceneNodes(nodes);
 
-    const adapter = new ComponentAdapter();
-
-    relevantNodes.forEach((node) => adapter.add(node));
+    relevantNodes.forEach((node) => this.adapter.add(node));
     const { instances, interfaces, types } = extractDataFromAdapter(
-      adapter,
+      this.adapter,
       this.showDefaultValues,
       this.explicitBooleans,
       this.findText
     );
-    const json = JSON.stringify(adapter.json(), null, 2);
+    const json = JSON.stringify(this.adapter.json(), null, 2);
     return {
       json,
       interfaces: Object.values(interfaces),
