@@ -1,39 +1,52 @@
-import { ComponentInspector } from "./ComponentInspector";
+import ComponentAdapter from "./ComponentAdapter";
+import { componentNodesFromSceneNodes } from "./utils";
+import { format as formatJSX } from "./formatJSX";
+import { format as formatJSON } from "./formatJSON";
+import { format as formatTS } from "./formatTS";
+import { FormatLanguage, FormatSettings } from "../shared";
 
-let EXPLICIT_BOOLEANS = false;
-let FIND_TEXT = false;
-let SHOW_DEFAULT_VALUES = true;
-
+const adapter = new ComponentAdapter();
 let lastNodes: SceneNode[] = [];
+let SETTINGS: { [K in FormatLanguage]: FormatSettings } = {
+  json: [],
+  jsx: [
+    ["Default", 1],
+    ["Bool", 0],
+    ["Text", 0],
+  ],
+  ts: [],
+};
 
-function runOverNodes() {
-  const inspector = new ComponentInspector(
-    EXPLICIT_BOOLEANS,
-    FIND_TEXT,
-    SHOW_DEFAULT_VALUES
-  );
-  const result = inspector.process(lastNodes);
-  figma.ui.postMessage({ type: "RESULT", ...result });
+function process() {
+  adapter.clear();
+  const relevantNodes = componentNodesFromSceneNodes(lastNodes);
+
+  relevantNodes.forEach((node) => adapter.add(node));
+  const results = [
+    formatJSX(adapter, SETTINGS.jsx),
+    formatTS(adapter, SETTINGS.ts),
+    formatJSON(adapter, SETTINGS.json),
+  ];
+
+  figma.ui.postMessage({ type: "RESULT", results });
 }
 
 function run() {
   lastNodes = [...figma.currentPage.selection];
-  runOverNodes();
+  process();
 }
 
 figma.ui.onmessage = (message) => {
   if (message.type === "SETTINGS") {
-    EXPLICIT_BOOLEANS = message.explicitBooleans;
-    FIND_TEXT = message.findText;
-    SHOW_DEFAULT_VALUES = message.showDefaultValues;
-    runOverNodes();
+    SETTINGS[message.language as FormatLanguage] = [...message.settings];
+    process();
   }
 };
 
 figma.showUI(__html__, {
   visible: true,
-  width: 600,
-  height: 600,
+  width: 450,
+  height: Math.ceil(figma.viewport.bounds.height * 0.8),
   themeColors: true,
 });
 

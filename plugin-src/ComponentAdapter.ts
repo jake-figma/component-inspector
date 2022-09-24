@@ -5,17 +5,26 @@ import {
   isBoolean,
   isNumber,
   propertyNameFromKey,
+  RelevantComponentNode,
 } from "./utils";
+import {
+  SafeComponentMap,
+  SafeProperties,
+  SafeProperty,
+  SafePropertyDefinitionMetaMap,
+  SafePropertyDefinition,
+  SafePropertyDefinitions,
+  SafePropertyDefinitionsMap,
+  SafePropertyReferencesMap,
+} from "./types";
 
 export default class ComponentAdapter {
-  metas: SafeDefinitionMeta = {};
-  definitions: { [k: string]: SafePropertyDefinitions } = {};
-  components: {
-    [k: string]: SafeComponent;
-  } = {};
-  references: SafePropertyReferences = {};
+  metas: SafePropertyDefinitionMetaMap = {};
+  definitions: SafePropertyDefinitionsMap = {};
+  components: SafeComponentMap = {};
+  references: SafePropertyReferencesMap = {};
 
-  add(node: InstanceNode | ComponentNode) {
+  add(node: RelevantComponentNode) {
     this.components[node.id] = processNodeInToSafeComponent(
       node,
       this.definitions,
@@ -42,23 +51,27 @@ export default class ComponentAdapter {
 }
 
 function processNodeInToSafeComponent(
-  node: InstanceNode | ComponentNode,
-  allDefinitions: { [k: string]: SafePropertyDefinitions },
-  allMetas: SafeDefinitionMeta,
-  references: SafePropertyReferences
+  node: RelevantComponentNode,
+  allDefinitions: SafePropertyDefinitionsMap,
+  allMetas: SafePropertyDefinitionMetaMap,
+  allReferences: SafePropertyReferencesMap
 ) {
-  const definition =
-    (node.type === "INSTANCE" ? node.mainComponent?.parent?.id : node.id) || "";
+  const definitionNode =
+    node.type === "INSTANCE" ? node.mainComponent?.parent : node;
+  const definition = definitionNode?.id || "";
+  const name = componentNameFromName(
+    definitionNode?.name || "UNNAMEDCOMPONENT"
+  );
   const componentPropertyDefinitions = getComponentPropertyDefinitions(node);
   const componentProperties = getComponentProperties(node);
-  setSafePropertyReferences(node, references);
+  setSafePropertyReferencesMap(node, allReferences);
   allDefinitions[definition] =
     allDefinitions[definition] ||
     getSafePropertyDefinitions(componentPropertyDefinitions);
-  allMetas[definition] = { name: node.name, id: node.id };
+  allMetas[definition] = { name, id: definition };
   return {
     id: node.id,
-    name: componentNameFromName(node.name),
+    name,
     definition,
     properties: getSafeProperties(
       allDefinitions[definition],
@@ -135,6 +148,7 @@ function createSafePropertyDefinition(
       };
   }
 }
+
 function createSafeProperty(
   key: string,
   definition: SafePropertyDefinition,
@@ -210,7 +224,7 @@ function getSafeProperties(
   return properties;
 }
 
-function getComponentPropertyDefinitions(node: InstanceNode | ComponentNode) {
+function getComponentPropertyDefinitions(node: RelevantComponentNode) {
   if (node.type === "INSTANCE") {
     const parent = node.mainComponent?.parent as ComponentSetNode | undefined;
     const parentDefinitions = parent?.componentPropertyDefinitions || {};
@@ -220,7 +234,7 @@ function getComponentPropertyDefinitions(node: InstanceNode | ComponentNode) {
   }
 }
 
-function getComponentProperties(node: InstanceNode | ComponentNode) {
+function getComponentProperties(node: RelevantComponentNode) {
   if (node.type === "INSTANCE") {
     return node.componentProperties;
   } else {
@@ -233,9 +247,9 @@ function getComponentProperties(node: InstanceNode | ComponentNode) {
   }
 }
 
-function setSafePropertyReferences(
-  node: InstanceNode | ComponentNode,
-  references: SafePropertyReferences
+function setSafePropertyReferencesMap(
+  node: RelevantComponentNode,
+  allReferences: SafePropertyReferencesMap
 ) {
   const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
   if (!referenceNode) {
@@ -248,7 +262,7 @@ function setSafePropertyReferences(
         const { characters, visible, mainComponent } =
           node.componentPropertyReferences;
         if (mainComponent) {
-          references[mainComponent] = {
+          allReferences[mainComponent] = {
             visible,
             characters,
           };
@@ -261,92 +275,3 @@ function setSafePropertyReferences(
   };
   recurse(referenceNode.children);
 }
-
-type SafePropertyReferences = {
-  [k: string]: { visible?: string; characters?: string };
-};
-
-type SafeType =
-  | "BOOLEAN"
-  | "EXPLICIT"
-  | "INSTANCE_SWAP"
-  | "NUMBER"
-  | "TEXT"
-  | "VARIANT";
-
-interface SafePropertyDefinitionBoolean {
-  type: Extract<SafeType, "BOOLEAN">;
-  defaultValue: boolean;
-}
-interface SafePropertyDefinitionExplicit {
-  type: Extract<SafeType, "EXPLICIT">;
-  defaultValue: string | number | boolean;
-}
-interface SafePropertyDefinitionNumber {
-  type: Extract<SafeType, "NUMBER">;
-  defaultValue: number;
-}
-interface SafePropertyDefinitionString {
-  type: Extract<SafeType, "INSTANCE_SWAP" | "TEXT">;
-  defaultValue: string;
-}
-interface SafePropertyDefinitionVariant {
-  type: Extract<SafeType, "VARIANT">;
-  defaultValue: string | number;
-  variantOptions: string[] | number[];
-}
-
-interface SafePropertyBoolean {
-  type: Extract<SafeType, "BOOLEAN">;
-  value: boolean;
-}
-interface SafePropertyExplicit {
-  type: Extract<SafeType, "EXPLICIT">;
-  value: string | number | boolean;
-}
-interface SafePropertyNumber {
-  type: Extract<SafeType, "NUMBER">;
-  value: number;
-}
-interface SafePropertyString {
-  type: Extract<SafeType, "INSTANCE_SWAP" | "TEXT">;
-  value: string;
-}
-interface SafePropertyVariant {
-  type: Extract<SafeType, "VARIANT">;
-  value: string | number;
-}
-
-export type SafePropertyDefinition = { name: string } & (
-  | SafePropertyDefinitionBoolean
-  | SafePropertyDefinitionExplicit
-  | SafePropertyDefinitionNumber
-  | SafePropertyDefinitionString
-  | SafePropertyDefinitionVariant
-);
-
-export type SafeProperty = { name: string; default: boolean } & (
-  | SafePropertyBoolean
-  | SafePropertyExplicit
-  | SafePropertyNumber
-  | SafePropertyString
-  | SafePropertyVariant
-);
-
-export interface SafeComponent {
-  id: string;
-  name: string;
-  definition: string;
-  properties: SafeProperties;
-}
-
-type SafeDefinitionMeta = {
-  [k: string]: { name: string; id: string };
-};
-type SafePropertyDefinitions = {
-  [k: string]: SafePropertyDefinition;
-};
-
-type SafeProperties = {
-  [k: string]: SafeProperty;
-};

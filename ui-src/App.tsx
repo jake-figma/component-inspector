@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { FormatLanguage, FormatResult, FormatSettings } from "../shared";
 import {
   tomorrow as themeDark,
   materialLight as themeLight,
@@ -15,20 +16,16 @@ const prettierOptions = {
   semi: true,
 };
 
-const joiner = (items: string[][]) =>
-  items.map((i) => i.join("\n\n")).join("\n\n");
+const joiner = (items: string[]) => items.join("\n\n");
 
 const detectLightMode = () =>
   document.documentElement.classList.contains("figma-light");
 
 function App() {
-  const [ts, setTs] = useState<string>("");
-  const [jsx, setJsx] = useState<string>("");
-  const [json, setJson] = useState<string>("");
-  const [tab, setTab] = useState<"ts" | "jsx" | "json">("jsx");
-  const [defaults, setDefaults] = useState(true);
-  const [booleans, setBooleans] = useState(false);
-  const [text, setText] = useState(false);
+  const [resultsMap, setResultsMap] = useState<{
+    [K in FormatLanguage]?: FormatResult;
+  }>({});
+  const [tab, setTab] = useState<FormatLanguage>();
   const [theme, setTheme] = useState<{ [key: string]: React.CSSProperties }>(
     detectLightMode() ? themeLight : themeDark
   );
@@ -36,30 +33,25 @@ function App() {
   useEffect(() => {
     window.onmessage = ({
       data: {
-        pluginMessage: {
-          type,
-          json,
-          interfaces,
-          instances,
-          types,
-          showDefaultValues,
-          explicitBooleans,
-          findText,
-        },
+        pluginMessage: { type, results },
       },
+    }: {
+      data: { pluginMessage: { type: "RESULT"; results: FormatResult[] } };
     }) => {
-      setDefaults(showDefaultValues);
-      setBooleans(explicitBooleans);
-      setText(findText);
       if (type === "RESULT") {
-        const tsString = joiner([types, interfaces]);
-        setTs(prettier.format(tsString, prettierOptions));
-        const jsxString =
-          instances.length > 1
-            ? `<>${joiner([instances])}</>`
-            : joiner([instances]);
-        setJsx(prettier.format(jsxString, prettierOptions).replace(/;\n$/, ""));
-        setJson(json);
+        const map = { ...resultsMap };
+        results.forEach((result) => {
+          map[result.language] = {
+            language: result.language,
+            label: result.label,
+            settings: [...result.settings],
+            lines: [...result.lines],
+          };
+        });
+        setResultsMap(map);
+        if (!tab) {
+          setTab(results[0].language);
+        }
       }
     };
 
@@ -76,97 +68,83 @@ function App() {
     }
   }, []);
 
-  function sendSettings({
-    defaults,
-    text,
-    booleans,
-  }: {
-    defaults: boolean;
-    text: boolean;
-    booleans: boolean;
-  }) {
+  const result = tab ? resultsMap[tab] : null;
+
+  function sendSettings(settings: FormatSettings) {
     parent.postMessage(
       {
         pluginMessage: {
           type: "SETTINGS",
-          explicitBooleans: booleans,
-          findText: text,
-          showDefaultValues: defaults,
+          language: result?.language,
+          settings,
         },
       },
       "*"
     );
   }
 
-  const renderCode = (language: string, text: string) => (
-    <SyntaxHighlighter
-      customStyle={{ margin: 0 }}
-      language={language}
-      style={theme}
-    >
-      {text}
-    </SyntaxHighlighter>
-  );
+  function renderedResult() {
+    if (!result) return null;
+
+    const renderCode = (text: string) => (
+      <SyntaxHighlighter
+        customStyle={{ margin: 0 }}
+        language={result.language}
+        style={theme}
+      >
+        {text}
+      </SyntaxHighlighter>
+    );
+
+    switch (result.language) {
+      case "json":
+        return renderCode(result.lines.join("\n"));
+      case "jsx":
+        const jsxString =
+          result.lines.length > 1
+            ? `<>${joiner(result.lines)}</>`
+            : joiner(result.lines);
+        return renderCode(
+          prettier.format(jsxString, prettierOptions).replace(/;\n$/, "")
+        );
+      case "ts":
+        const tsString = joiner(result.lines);
+        return renderCode(prettier.format(tsString, prettierOptions));
+    }
+  }
 
   return (
     <>
       <header>
         <div>
-          <button
-            className={tab === "jsx" ? "brand" : ""}
-            onClick={() => setTab("jsx")}
-          >
-            Components
-          </button>
-          &nbsp;
-          <button
-            className={tab === "ts" ? "brand" : ""}
-            onClick={() => setTab("ts")}
-          >
-            Types
-          </button>
-          &nbsp;
-          <button
-            className={tab === "json" ? "brand" : ""}
-            onClick={() => setTab("json")}
-          >
-            JSON
-          </button>
+          {Object.values(resultsMap).map(({ label, language }) => (
+            <button
+              key={language}
+              className={tab === language ? "brand" : ""}
+              onClick={() => setTab(language)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        {tab === "jsx" ? (
+        {result ? (
           <div>
-            <button
-              className={defaults ? "brand" : ""}
-              onClick={() =>
-                sendSettings({ defaults: !defaults, text, booleans })
-              }
-            >
-              Defaults
-            </button>
-            &nbsp;
-            <button
-              className={booleans ? "brand" : ""}
-              onClick={() =>
-                sendSettings({ defaults, text, booleans: !booleans })
-              }
-            >
-              Booleans
-            </button>
-            &nbsp;
-            <button
-              className={text ? "brand" : ""}
-              onClick={() => sendSettings({ defaults, text: !text, booleans })}
-            >
-              Text
-            </button>
+            {result.settings.map(([label, value], i) => (
+              <button
+                className={value ? "brand small" : "small"}
+                onClick={() => {
+                  const updated = [...result.settings];
+                  updated[i][1] = value ? 0 : 1;
+                  sendSettings(updated);
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         ) : null}
       </header>
-      <main>
-        {tab === "ts" ? renderCode("typescript", ts) : null}
-        {tab === "jsx" ? renderCode("jsx", jsx) : null}
-        {tab === "json" ? renderCode("json", json) : null}
-      </main>
+      <main>{renderedResult()}</main>
     </>
   );
 }
