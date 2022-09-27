@@ -1,14 +1,10 @@
-import ComponentAdapter from "./ComponentAdapter";
+import { Adapter } from "./adapter";
 import { FormatResult, FormatSettings } from "../shared";
 import { SafeComponent, SafeProperty } from "./types";
-import {
-  componentNameFromName,
-  propertyNameFromKey,
-  RelevantComponentNode,
-} from "./utils";
+import { componentNameFromName, propertyNameFromKey } from "./utils";
 
 export function format(
-  adapter: ComponentAdapter,
+  adapter: Adapter,
   settings: FormatSettings
 ): FormatResult {
   const { components } = adapter;
@@ -34,48 +30,55 @@ export function format(
 
 function componentToJsxTypeString(
   component: SafeComponent,
-  adapter: ComponentAdapter,
+  adapter: Adapter,
   showDefaults: boolean,
   explicitBoolean: boolean,
   findText: boolean
 ) {
   const definitions = adapter.definitions[component.definition];
   const meta = adapter.metas[component.definition];
-  const node = figma.getNodeById(component.id) as RelevantComponentNode;
 
-  const textNode: TextNode | null = findText
-    ? (node.children.find((c) => c.type === "TEXT") as TextNode) || null
-    : null;
-
-  const isInstance = node.type === "INSTANCE";
-  const keys = Object.keys(component.properties).filter(
-    (key) =>
-      showDefaults ||
-      definitions[key].type === "INSTANCE_SWAP" ||
-      (isInstance &&
-        definitions[key].defaultValue !== node.componentProperties[key].value)
+  const textKey = Object.keys(component.properties).find(
+    (key) => definitions[key].type === "TEXT"
   );
-  const text = textNode?.characters || "";
+  const children: string | null =
+    findText && textKey
+      ? `${component.properties[textKey].value}` || null
+      : null;
+
+  const neverDefaultType = (key: string) =>
+    definitions[key].type === "INSTANCE_SWAP" ||
+    definitions[key].type === "TEXT" ||
+    definitions[key].type === "NUMBER";
+  const isNotDefaultValue = (key: string) =>
+    definitions[key].defaultValue !== component.properties[key].value;
+  const notTextChildrenKey = (key: string) => !children || key !== textKey;
+
+  const propertyKeys = Object.keys(component.properties).filter(
+    (key) =>
+      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
+      notTextChildrenKey(key)
+  );
 
   const isReferenceChecked = (name: string) => {
-    const key = adapter.references[name]?.visible;
+    const key = adapter.references.instances[name]?.visible;
     if (!key) {
       return true;
     }
-    const visible = adapter.references[name]?.visible || "";
-    return isInstance
-      ? node.componentProperties[visible]?.value
-      : definitions[visible]?.defaultValue;
+    const visible = adapter.references.instances[name]?.visible || "";
+    return component.properties[visible]?.value;
   };
 
-  const formatMap = (name: string) =>
-    isReferenceChecked(name)
-      ? formatJsxProp(component.properties[name], name, explicitBoolean)
-      : null;
-
-  const lines = keys.sort().map(formatMap).filter(Boolean);
+  const lines = propertyKeys
+    .sort()
+    .map((key: string) =>
+      isReferenceChecked(key)
+        ? formatJsxProp(component.properties[key], key, explicitBoolean)
+        : null
+    )
+    .filter(Boolean);
   const n = componentNameFromName(meta.name);
-  return `<${n} ${lines.join(" ")} ${text ? `>${text}</${n}>` : `/>`}`;
+  return `<${n} ${lines.join(" ")} ${children ? `>${children}</${n}>` : `/>`}`;
 }
 
 function formatJsxProp(

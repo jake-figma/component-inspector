@@ -1,47 +1,41 @@
-import ComponentAdapter from "./ComponentAdapter";
-import { componentNodesFromSceneNodes } from "./utils";
+import { adapter } from "./adapter";
+import {
+  componentNodesFromSceneNodes,
+  nodeChangesIncludesComponents,
+} from "./utils";
 import { format as formatJSX } from "./formatJSX";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatTS } from "./formatTS";
-import { FormatLanguage, FormatSettings } from "../shared";
+import { FormatLanguage, FormatResult, FormatSettings } from "../shared";
 
-const adapter = new ComponentAdapter();
-let lastNodes: SceneNode[] = [];
-let SETTINGS: { [K in FormatLanguage]: FormatSettings } = {
+const SETTINGS: { [K in FormatLanguage]: FormatSettings } = {
   json: [],
+  ts: [],
   jsx: [
     ["Default", 1],
     ["Bool", 0],
     ["Text", 0],
   ],
-  ts: [],
 };
+const nodes: SceneNode[] = [];
 
 function process() {
-  adapter.clear();
-  const relevantNodes = componentNodesFromSceneNodes(lastNodes);
-
-  relevantNodes.forEach((node) => adapter.add(node));
-  const results = [
-    formatJSX(adapter, SETTINGS.jsx),
-    formatTS(adapter, SETTINGS.ts),
-    formatJSON(adapter, SETTINGS.json),
+  const relevantNodes = componentNodesFromSceneNodes(nodes);
+  const processed = adapter(relevantNodes);
+  const results: FormatResult[] = [
+    formatJSX(processed, SETTINGS.jsx),
+    formatTS(processed, SETTINGS.ts),
+    formatJSON(processed, SETTINGS.json),
   ];
 
   figma.ui.postMessage({ type: "RESULT", results });
 }
 
 function run() {
-  lastNodes = [...figma.currentPage.selection];
+  nodes.splice(0, nodes.length);
+  figma.currentPage.selection.forEach((node) => nodes.push(node));
   process();
 }
-
-figma.ui.onmessage = (message) => {
-  if (message.type === "SETTINGS") {
-    SETTINGS[message.language as FormatLanguage] = [...message.settings];
-    process();
-  }
-};
 
 figma.showUI(__html__, {
   visible: true,
@@ -50,16 +44,17 @@ figma.showUI(__html__, {
   themeColors: true,
 });
 
+figma.ui.onmessage = (message) => {
+  if (message.type === "SETTINGS") {
+    SETTINGS[message.language as FormatLanguage] = [...message.settings];
+    process();
+  }
+};
+
 figma.on("nodechange", (e) => {
-  if (
-    e.nodeChanges.find((n) =>
-      ["INSTANCE", "COMPONENT"].includes(figma.getNodeById(n.id)?.type || "")
-    )
-  ) {
+  if (nodeChangesIncludesComponents(e.nodeChanges)) {
     run();
   }
 });
-
 figma.on("selectionchange", run);
-
 run();

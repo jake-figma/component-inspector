@@ -49,9 +49,6 @@ function App() {
           };
         });
         setResultsMap(map);
-        if (!tab) {
-          setTab(results[0].language);
-        }
       }
     };
 
@@ -67,6 +64,15 @@ function App() {
       observer.observe(stylesheet, { childList: true });
     }
   }, []);
+
+  useEffect(() => {
+    if (!tab) {
+      const value = Object.values(resultsMap)[0];
+      if (value) {
+        setTab(value.language);
+      }
+    }
+  }, [resultsMap, tab, setTab]);
 
   const result = tab ? resultsMap[tab] : null;
 

@@ -1,10 +1,10 @@
-import ComponentAdapter from "./ComponentAdapter";
+import { Adapter } from "./adapter";
 import { FormatResult, FormatSettings } from "../shared";
 import { SafePropertyDefinition } from "./types";
 import { componentNameFromName, propertyNameFromKey } from "./utils";
 
 export function format(
-  adapter: ComponentAdapter,
+  adapter: Adapter,
   _settings: FormatSettings
 ): FormatResult {
   const { definitions, metas } = adapter;
@@ -15,14 +15,13 @@ export function format(
     const interfaceName = `${componentNameFromName(metas[key].name)}Props`;
     const lines = Object.keys(properties)
       .sort()
-      .map(
-        (propName) =>
-          `${propertyNameFromKey(propName)}: ${formatDefinitionInterface(
-            interfaceName,
-            propName,
-            types,
-            properties[propName]
-          )};`
+      .map((propName) =>
+        formatInterfaceProperties(
+          interfaceName,
+          propName,
+          types,
+          properties[propName]
+        )
       );
     interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
   });
@@ -33,31 +32,32 @@ export function format(
   return { label: "Types", language: "ts", lines, settings: [] };
 }
 
-function formatDefinitionInterface(
+function formatInterfaceProperties(
   interfaceName: string,
   propName: string,
   types: TypeDefinitionsObject,
   definition: SafePropertyDefinition
 ) {
+  const name = propertyNameFromKey(propName);
   if (definition.type === "BOOLEAN") {
-    return "boolean";
+    return `${name}: boolean;`;
   } else if (definition.type === "NUMBER") {
-    return "number";
+    return `${name}: number;`;
   } else if (definition.type === "TEXT") {
-    return "string";
+    return `${name}: string;`;
   } else if (definition.type === "VARIANT") {
-    const name = `${interfaceName}${componentNameFromName(propName)}`;
+    const n = `${interfaceName}${componentNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
       .map((o) => `'${o}'`)
       .join(" | ");
-    types[name] = value;
-    return name;
+    types[n] = value;
+    return `${name}: ${n};`;
   } else if (definition.type === "EXPLICIT") {
-    return definition.defaultValue;
+    return `${name}: ${definition.defaultValue};`;
   } else if (definition.type === "INSTANCE_SWAP") {
-    return "React.ReactNode";
+    return `${name}: React.ReactNode;`;
   } else {
-    return JSON.stringify(definition);
+    return `${name}: ${JSON.stringify(definition)};`;
   }
 }
 

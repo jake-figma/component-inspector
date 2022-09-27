@@ -1,10 +1,10 @@
 import { FormatResult, FormatSettings } from "../shared";
-import ComponentAdapter from "./ComponentAdapter";
+import { Adapter } from "./adapter";
 
 export function format(
-  adapter: ComponentAdapter,
+  adapter: Adapter,
   _settings: FormatSettings
 ): FormatResult {
-  const lines = [JSON.stringify(adapter.json(), null, 2)];
+  const lines = [JSON.stringify(adapter, null, 2)];
   return { label: "JSON", language: "json", lines, settings: [] };
 }

@@ -1,5 +1,10 @@
 export type SafePropertyReferencesMap = {
-  [k: string]: { visible?: string; characters?: string };
+  instances: {
+    [k: string]: { visible?: string; characters?: string };
+  };
+  properties: {
+    [k: string]: { visible?: boolean; characters?: boolean };
+  };
 };
 
 export type SafePropertyDefinitionMetaMap = {

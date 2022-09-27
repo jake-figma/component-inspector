@@ -18,36 +18,30 @@ import {
   SafePropertyReferencesMap,
 } from "./types";
 
-export default class ComponentAdapter {
-  metas: SafePropertyDefinitionMetaMap = {};
-  definitions: SafePropertyDefinitionsMap = {};
-  components: SafeComponentMap = {};
-  references: SafePropertyReferencesMap = {};
+export interface Adapter {
+  metas: SafePropertyDefinitionMetaMap;
+  definitions: SafePropertyDefinitionsMap;
+  components: SafeComponentMap;
+  references: SafePropertyReferencesMap;
+}
 
-  add(node: RelevantComponentNode) {
-    this.components[node.id] = processNodeInToSafeComponent(
+export function adapter(nodes: RelevantComponentNode[]): Adapter {
+  const metas: SafePropertyDefinitionMetaMap = {};
+  const definitions: SafePropertyDefinitionsMap = {};
+  const components: SafeComponentMap = {};
+  const references: SafePropertyReferencesMap = {
+    instances: {},
+    properties: {},
+  };
+  nodes.forEach((node) => {
+    components[node.id] = processNodeInToSafeComponent(
       node,
-      this.definitions,
-      this.metas,
-      this.references
+      definitions,
+      metas,
+      references
     );
-  }
-
-  clear() {
-    this.metas = {};
-    this.definitions = {};
-    this.components = {};
-    this.references = {};
-  }
-
-  json() {
-    return {
-      components: this.components,
-      definitions: this.definitions,
-      metas: this.metas,
-      references: this.references,
-    };
-  }
+  });
+  return { components, definitions, metas, references };
 }
 
 function processNodeInToSafeComponent(
@@ -57,7 +51,11 @@ function processNodeInToSafeComponent(
   allReferences: SafePropertyReferencesMap
 ) {
   const definitionNode =
-    node.type === "INSTANCE" ? node.mainComponent?.parent : node;
+    node.type === "INSTANCE"
+      ? node.mainComponent?.parent?.type === "COMPONENT_SET"
+        ? node.mainComponent?.parent
+        : node.mainComponent
+      : node;
   const definition = definitionNode?.id || "";
   const name = componentNameFromName(
     definitionNode?.name || "UNNAMEDCOMPONENT"
@@ -226,7 +224,10 @@ function getSafeProperties(
 
 function getComponentPropertyDefinitions(node: RelevantComponentNode) {
   if (node.type === "INSTANCE") {
-    const parent = node.mainComponent?.parent as ComponentSetNode | undefined;
+    const parent =
+      node.mainComponent?.parent?.type === "COMPONENT_SET"
+        ? node.mainComponent?.parent
+        : node.mainComponent;
     const parentDefinitions = parent?.componentPropertyDefinitions || {};
     return parentDefinitions;
   } else {
@@ -252,20 +253,24 @@ function setSafePropertyReferencesMap(
   allReferences: SafePropertyReferencesMap
 ) {
   const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
-  if (!referenceNode) {
-    return;
-  }
-  const recurse = (nodes: readonly SceneNode[]) => {
+  const recurse = (nodes: readonly SceneNode[] = []) => {
     nodes.forEach((node) => {
       if (node.componentPropertyReferences) {
-        // 'visible' | 'characters' | 'mainComponent'
         const { characters, visible, mainComponent } =
           node.componentPropertyReferences;
         if (mainComponent) {
-          allReferences[mainComponent] = {
+          allReferences.instances[mainComponent] = {
             visible,
             characters,
           };
+        }
+        if (characters || visible) {
+          if (characters) {
+            allReferences.properties[characters] = { characters: true };
+          }
+          if (visible) {
+            allReferences.properties[visible] = { visible: true };
+          }
         }
       }
       if ("children" in node) {
@@ -273,5 +278,7 @@ function setSafePropertyReferencesMap(
       }
     });
   };
-  recurse(referenceNode.children);
+  if (referenceNode) {
+    recurse(referenceNode.children);
+  }
 }

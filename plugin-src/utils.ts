@@ -8,13 +8,13 @@ export function downcase(name: string) {
 
 export function componentNameFromName(name: string) {
   return name
-    .split(/[ _-]+/)
+    .split(/[^\w\d]+/g)
     .map(capitalize)
     .join("");
 }
 
 export function propertyNameFromKey(name: string) {
-  return downcase(name.replace(/#.*$/, "").replace(/ /g, ""));
+  return downcase(name.replace(/#.*$/, "").replace(/[^\w\d]/g, ""));
 }
 
 export function asBoolean(string: string) {
@@ -54,4 +54,14 @@ export function componentNodesFromSceneNodes(
           return n as ComponentNode;
       }
     });
+}
+
+export function nodeChangesIncludesComponents(
+  nodeChanges: NodeChange[] = []
+): Boolean {
+  return Boolean(
+    nodeChanges.find((n) =>
+      ["INSTANCE", "COMPONENT"].includes(figma.getNodeById(n.id)?.type || "")
+    )
+  );
 }
