@@ -1,17 +1,24 @@
 import { Adapter } from "./adapter";
 import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
-import { SafeComponent, SafeProperty, SafePropertyDefinition } from "./types";
+import {
+  SafeComponent,
+  SafeProperty,
+  SafePropertyDefinition,
+  SafePropertyDefinitions,
+  SafePropertyDefinitionMetaMap,
+} from "./types";
 import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
 
 export function format(
   adapter: Adapter,
   instanceSettings?: FormatSettings
 ): FormatResult {
-  const definitions = formatDefinitions(adapter);
-  const instances = formatInstances(adapter, instanceSettings);
   return {
     label: "React",
-    items: [definitions, instances],
+    items: [
+      formatInstances(adapter, instanceSettings),
+      formatDefinitions(adapter),
+    ],
   };
 }
 
@@ -19,6 +26,7 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
   const types: TypeDefinitionsObject = {};
   const interfaces: InterfaceDefinitionsObject = {};
+  const componentDefinitionFunctions: string[] = [];
   Object.keys(definitions).forEach((key) => {
     const properties = definitions[key];
     const interfaceName = `${capitalizedNameFromName(metas[key].name)}Props`;
@@ -33,12 +41,16 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
         )
       );
     interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
+    componentDefinitionFunctions.push(
+      formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas)
+    );
   });
   const lines = [
     ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
     ...Object.values(interfaces),
+    ...componentDefinitionFunctions,
   ];
-  return { label: "Definitions", language: "ts", lines, settings: [] };
+  return { label: "Definitions", language: "tsx", lines, settings: [] };
 }
 
 function formatInstances(
@@ -172,4 +184,53 @@ function formatJsxProp(
   } else {
     return `${clean}="${property.value}"`;
   }
+}
+
+function formatComponentFunctionFromDefinitionsAndMetas(
+  key: string,
+  definitions: SafePropertyDefinitions,
+  metas: SafePropertyDefinitionMetaMap
+): string {
+  const meta = metas[key];
+  const keys = Object.keys(definitions).sort();
+  const destructuredProps = `{
+    ${keys
+      .map((key) =>
+        formatDefinitionInputProperty(meta.name, key, definitions[key])
+      )
+      .join("\n")}
+  }`;
+  const propsName = `${capitalizedNameFromName(metas[key].name)}Props`;
+  return `const ${capitalizedNameFromName(
+    meta.name
+  )}: React.FC<${propsName}> = (${destructuredProps}) => {}`;
+}
+
+function formatDefinitionInputProperty(
+  componentName: string,
+  key: string,
+  definition: SafePropertyDefinition
+): string {
+  const { name, type, defaultValue } = definition;
+  const clean = propertyNameFromKey(name);
+  if (type === "BOOLEAN") {
+    return `${clean} = ${defaultValue},`;
+  } else if (type === "INSTANCE_SWAP") {
+    const node = figma.getNodeById(defaultValue);
+    return node
+      ? `${clean} = <${capitalizedNameFromName(node.name)} />,`
+      : `${clean} = "${defaultValue}",`;
+  } else if (type === "NUMBER") {
+    return `${clean}  = ${defaultValue},`;
+  } else if (type === "VARIANT") {
+    return `${clean} = "${defaultValue}",`;
+  } else {
+    return `${clean} = "${defaultValue}",`;
+  }
+}
+
+function typeNameForComponentProperty(componentName: string, name: string) {
+  return `${capitalizedNameFromName(componentName)}${capitalizedNameFromName(
+    name
+  )}`;
 }

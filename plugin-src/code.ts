@@ -6,7 +6,7 @@ import {
 import { format as formatAngular } from "./formatAngular";
 import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
-import { FormatLanguage, FormatResult, FormatSettings } from "../shared";
+import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
   reactInstance: [
@@ -38,7 +38,7 @@ function run() {
 figma.showUI(__html__, {
   visible: true,
   width: 450,
-  height: Math.ceil(figma.viewport.bounds.height * 0.8),
+  height: 900,
   themeColors: true,
 });
 

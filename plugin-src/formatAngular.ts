@@ -14,11 +14,9 @@ import {
 } from "./utils";
 
 export function format(adapter: Adapter): FormatResult {
-  const definitions = formatDefinitions(adapter);
-  const instances = formatInstances(adapter);
   return {
     label: "Angular",
-    items: [definitions, instances],
+    items: [formatInstances(adapter), formatDefinitions(adapter)],
   };
 }
 
@@ -99,7 +97,7 @@ function formatComponentClassFromDefinitionsAndMetas(
   const keys = Object.keys(definitions).sort();
   return [
     `@Component({ selector: '${hyphenatedNameFromName(meta.name)}' })`,
-    `export class ${capitalizedNameFromName(meta.name)}Component {`,
+    `class ${capitalizedNameFromName(meta.name)}Component {`,
     keys
       .map((key) => formatDefinitionInputProperty(meta.name, definitions[key]))
       .join("\n"),
@@ -128,7 +126,7 @@ function formatDefinitionInputProperty(
     return `@Input() ${clean}: ${typeNameForComponentProperty(
       componentName,
       name
-    )}  = "${defaultValue}";`;
+    )} = "${defaultValue}";`;
   } else {
     return `@Input() ${clean}: string  = "${defaultValue}";`;
   }

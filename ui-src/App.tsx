@@ -130,6 +130,7 @@ function App() {
           prettier.format(jsxString, prettierOptionsTS).replace(/;\n$/, "")
         );
       case "ts":
+      case "tsx":
         const tsString = joiner(resultItem.lines);
         return renderCode(prettier.format(tsString, prettierOptionsTS));
     }

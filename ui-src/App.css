@@ -54,7 +54,8 @@ header > div {
   gap: 0.25rem;
 }
 
-button {
+button,
+select {
   border-radius: 0.25rem;
   background: var(--color-bg);
   color: var(--color-text);
@@ -66,16 +67,22 @@ button.small {
   font-size: 0.8em;
   padding: 0.25rem;
 }
-button:hover {
+button:hover,
+select:hover {
   background-color: var(--color-bg-hover);
 }
-button:active {
+button:active,
+select:active {
   background-color: var(--color-bg-active);
 }
 button:focus-visible {
   border: none;
   outline-color: var(--color-border-focus);
 }
+select:focus-visible {
+  outline-color: var(--color-border-focus);
+}
+
 button.brand {
   --color-bg: var(--color-bg-brand);
   --color-text: var(--color-text-brand);
