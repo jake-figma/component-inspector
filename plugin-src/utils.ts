@@ -6,15 +6,22 @@ export function downcase(name: string) {
   return `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
 }
 
-export function componentNameFromName(name: string) {
+export function capitalizedNameFromName(name: string) {
   return name
-    .split(/[^\w\d]+/g)
+    .split(/[^a-zA-Z\d]+/g)
     .map(capitalize)
     .join("");
 }
+export function hyphenatedNameFromName(name: string) {
+  return name
+    .replace(/([A-Z])/g, "-$1")
+    .replace(/-+/g, "-")
+    .replace(/^-/, "")
+    .toLowerCase();
+}
 
 export function propertyNameFromKey(name: string) {
-  return downcase(name.replace(/#.*$/, "").replace(/[^\w\d]/g, ""));
+  return downcase(capitalizedNameFromName(name).replace(/\d/g, ""));
 }
 
 export function asBoolean(string: string) {

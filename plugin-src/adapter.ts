@@ -1,7 +1,7 @@
 import {
   asBoolean,
   asNumber,
-  componentNameFromName,
+  capitalizedNameFromName,
   isBoolean,
   isNumber,
   propertyNameFromKey,
@@ -57,7 +57,7 @@ function processNodeInToSafeComponent(
         : node.mainComponent
       : node;
   const definition = definitionNode?.id || "";
-  const name = componentNameFromName(
+  const name = capitalizedNameFromName(
     definitionNode?.name || "UNNAMEDCOMPONENT"
   );
   const componentPropertyDefinitions = getComponentPropertyDefinitions(node);

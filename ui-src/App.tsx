@@ -7,13 +7,19 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import prettier from "prettier/esm/standalone.mjs";
 import parserBabel from "prettier/esm/parser-babel.mjs";
+import parserHTML from "prettier/esm/parser-html.mjs";
 import "./App.css";
 
-const prettierOptions = {
-  printWidth: 40,
+const prettierOptionsTS = {
+  printWidth: 50,
   parser: "babel-ts",
   plugins: [parserBabel],
   semi: true,
+};
+const prettierOptionsHTML = {
+  printWidth: 40,
+  parser: "html",
+  plugins: [parserHTML],
 };
 
 const joiner = (items: string[]) => items.join("\n\n");
@@ -23,9 +29,10 @@ const detectLightMode = () =>
 
 function App() {
   const [resultsMap, setResultsMap] = useState<{
-    [K in FormatLanguage]?: FormatResult;
+    [k: string]: FormatResult;
   }>({});
-  const [tab, setTab] = useState<FormatLanguage>();
+  const [tab, setTab] = useState<string>();
+  const [tabIndex, setTabIndex] = useState(0);
   const [theme, setTheme] = useState<{ [key: string]: React.CSSProperties }>(
     detectLightMode() ? themeLight : themeDark
   );
@@ -41,11 +48,15 @@ function App() {
       if (type === "RESULT") {
         const map = { ...resultsMap };
         results.forEach((result) => {
-          map[result.language] = {
-            language: result.language,
+          map[result.label] = {
             label: result.label,
-            settings: [...result.settings],
-            lines: [...result.lines],
+            items: result.items.map((item) => ({
+              language: item.language,
+              label: item.label,
+              settings: [...item.settings],
+              settingsKey: item.settingsKey,
+              lines: [...item.lines],
+            })),
           };
         });
         setResultsMap(map);
@@ -69,19 +80,20 @@ function App() {
     if (!tab) {
       const value = Object.values(resultsMap)[0];
       if (value) {
-        setTab(value.language);
+        setTab(value.label);
       }
     }
   }, [resultsMap, tab, setTab]);
 
   const result = tab ? resultsMap[tab] : null;
+  const resultItem = result ? result.items[tabIndex] : null;
 
   function sendSettings(settings: FormatSettings) {
     parent.postMessage(
       {
         pluginMessage: {
           type: "SETTINGS",
-          language: result?.language,
+          settingsKey: resultItem?.settingsKey,
           settings,
         },
       },
@@ -90,56 +102,72 @@ function App() {
   }
 
   function renderedResult() {
-    if (!result) return null;
+    if (!resultItem) return null;
 
     const renderCode = (text: string) => (
       <SyntaxHighlighter
         customStyle={{ margin: 0 }}
-        language={result.language}
+        language={resultItem?.language}
         style={theme}
       >
         {text}
       </SyntaxHighlighter>
     );
 
-    switch (result.language) {
+    switch (resultItem.language) {
+      case "html":
+        return renderCode(
+          prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
+        );
       case "json":
-        return renderCode(result.lines.join("\n"));
+        return renderCode(resultItem.lines.join("\n"));
       case "jsx":
         const jsxString =
-          result.lines.length > 1
-            ? `<>${joiner(result.lines)}</>`
-            : joiner(result.lines);
+          resultItem.lines.length > 1
+            ? `<>${joiner(resultItem.lines)}</>`
+            : joiner(resultItem.lines);
         return renderCode(
-          prettier.format(jsxString, prettierOptions).replace(/;\n$/, "")
+          prettier.format(jsxString, prettierOptionsTS).replace(/;\n$/, "")
         );
       case "ts":
-        const tsString = joiner(result.lines);
-        return renderCode(prettier.format(tsString, prettierOptions));
+        const tsString = joiner(resultItem.lines);
+        return renderCode(prettier.format(tsString, prettierOptionsTS));
     }
+  }
+
+  function handleTabChange(s: string) {
+    setTab(s);
+    setTabIndex(0);
   }
 
   return (
     <>
       <header>
         <div>
-          {Object.values(resultsMap).map(({ label, language }) => (
-            <button
-              key={language}
-              className={tab === language ? "brand" : ""}
-              onClick={() => setTab(language)}
-            >
-              {label}
-            </button>
-          ))}
+          <select onChange={(e) => handleTabChange(e.target.value)}>
+            {Object.values(resultsMap).map(({ label }) => (
+              <option key={label} selected={tab === label}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {result ? (
+            <select onChange={(e) => setTabIndex(parseInt(e.target.value))}>
+              {result.items.map(({ label }, i) => (
+                <option key={label} selected={tabIndex === i} value={i}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
-        {result ? (
+        {resultItem ? (
           <div>
-            {result.settings.map(([label, value], i) => (
+            {resultItem.settings.map(([label, value], i) => (
               <button
                 className={value ? "brand small" : "small"}
                 onClick={() => {
-                  const updated = [...result.settings];
+                  const updated = [...resultItem.settings];
                   updated[i][1] = value ? 0 : 1;
                   sendSettings(updated);
                 }}

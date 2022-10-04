@@ -3,15 +3,13 @@ import {
   componentNodesFromSceneNodes,
   nodeChangesIncludesComponents,
 } from "./utils";
-import { format as formatJSX } from "./formatJSX";
+import { format as formatAngular } from "./formatAngular";
+import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
-import { format as formatTS } from "./formatTS";
 import { FormatLanguage, FormatResult, FormatSettings } from "../shared";
 
-const SETTINGS: { [K in FormatLanguage]: FormatSettings } = {
-  json: [],
-  ts: [],
-  jsx: [
+const SETTINGS: { [k: string]: FormatSettings } = {
+  reactInstance: [
     ["Default", 1],
     ["Bool", 0],
     ["Text", 0],
@@ -23,9 +21,9 @@ function process() {
   const relevantNodes = componentNodesFromSceneNodes(nodes);
   const processed = adapter(relevantNodes);
   const results: FormatResult[] = [
-    formatJSX(processed, SETTINGS.jsx),
-    formatTS(processed, SETTINGS.ts),
-    formatJSON(processed, SETTINGS.json),
+    formatReact(processed, SETTINGS.reactInstance),
+    formatAngular(processed),
+    formatJSON(processed),
   ];
 
   figma.ui.postMessage({ type: "RESULT", results });
@@ -46,7 +44,7 @@ figma.showUI(__html__, {
 
 figma.ui.onmessage = (message) => {
   if (message.type === "SETTINGS") {
-    SETTINGS[message.language as FormatLanguage] = [...message.settings];
+    SETTINGS[message.settingsKey] = [...message.settings];
     process();
   }
 };
