@@ -6,6 +6,7 @@ import {
 import { format as formatAngular } from "./formatAngular";
 import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
+import { format as formatWebComponents } from "./formatWebComponents";
 import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
@@ -23,6 +24,7 @@ function process() {
   const results: FormatResult[] = [
     formatReact(processed, SETTINGS.reactInstance),
     formatAngular(processed),
+    formatWebComponents(processed),
     formatJSON(processed),
   ];
 
