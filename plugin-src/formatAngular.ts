@@ -75,6 +75,9 @@ function formatInstanceAttributeFromProperty(
   property: SafeProperty,
   name: string
 ) {
+  if (property.undefined) {
+    return "";
+  }
   const clean = propertyNameFromKey(name);
   if (property.type === "BOOLEAN") {
     return `[${clean}]="${property.value}"`;
@@ -109,26 +112,32 @@ function formatDefinitionInputProperty(
   componentName: string,
   definition: SafePropertyDefinition
 ): string {
-  const { name, type, defaultValue } = definition;
+  const { name, type, defaultValue, optional } = definition;
   const clean = propertyNameFromKey(name);
+  const q = optional ? "?" : "";
   if (type === "BOOLEAN") {
-    return `@Input() ${clean}: boolean = ${defaultValue};`;
+    return `@Input() ${clean}${q}: boolean = ${defaultValue};`;
   } else if (type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(defaultValue);
+    const value = node
+      ? node.name === "undefined"
+        ? ""
+        : ` = "${capitalizedNameFromName(node.name)}";`
+      : ` = "${defaultValue}"`;
     return node
-      ? `@Input() ${clean}: Component = "${capitalizedNameFromName(
-          node.name
-        )}";`
-      : `@Input() ${clean}: string = "${defaultValue}";`;
+      ? `@Input() ${clean}${q}: Component${value};`
+      : `@Input() ${clean}${q}: string${value};`;
   } else if (type === "NUMBER") {
-    return `@Input() ${clean}: number  = ${defaultValue};`;
+    return `@Input() ${clean}${q}: number = ${defaultValue};`;
   } else if (type === "VARIANT") {
-    return `@Input() ${clean}: ${typeNameForComponentProperty(
+    return `@Input() ${clean}${q}: ${typeNameForComponentProperty(
       componentName,
       name
-    )} = "${defaultValue}";`;
+    )}${
+      optional && defaultValue === "undefined" ? "" : ` = "${defaultValue}";`
+    }`;
   } else {
-    return `@Input() ${clean}: string  = "${defaultValue}";`;
+    return `@Input() ${clean}${q}: string  = "${defaultValue}";`;
   }
 }
 

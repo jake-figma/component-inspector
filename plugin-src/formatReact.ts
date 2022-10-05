@@ -86,25 +86,26 @@ function formatInterfaceProperties(
   definition: SafePropertyDefinition
 ) {
   const name = propertyNameFromKey(propName);
+  const q = definition.optional ? "?" : "";
   if (definition.type === "BOOLEAN") {
-    return `${name}: boolean;`;
+    return `${name}${q}: boolean;`;
   } else if (definition.type === "NUMBER") {
-    return `${name}: number;`;
+    return `${name}${q}: number;`;
   } else if (definition.type === "TEXT") {
-    return `${name}: string;`;
+    return `${name}${q}: string;`;
   } else if (definition.type === "VARIANT") {
     const n = `${interfaceName}${capitalizedNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
       .map((o) => `'${o}'`)
       .join(" | ");
     types[n] = value;
-    return `${name}: ${n};`;
+    return `${name}${q}: ${n};`;
   } else if (definition.type === "EXPLICIT") {
-    return `${name}: ${definition.defaultValue};`;
+    return `${name}${q}: ${definition.defaultValue};`;
   } else if (definition.type === "INSTANCE_SWAP") {
-    return `${name}: React.ReactNode;`;
+    return `${name}${q}: React.ReactNode;`;
   } else {
-    return `${name}: ${JSON.stringify(definition)};`;
+    return `${name}${q}: ${JSON.stringify(definition)};`;
   }
 }
 
@@ -170,6 +171,9 @@ function formatJsxProp(
   explicitBoolean: boolean
 ) {
   const clean = propertyNameFromKey(name);
+  if (property.undefined) {
+    return "";
+  }
   if (property.type === "BOOLEAN") {
     return explicitBoolean
       ? `${clean}={${property.value}}`
@@ -211,10 +215,16 @@ function formatDefinitionInputProperty(
 ): string {
   const { name, type, defaultValue } = definition;
   const clean = propertyNameFromKey(name);
+  if (definition.optional && defaultValue === "undefined") {
+    return `${clean},`;
+  }
   if (type === "BOOLEAN") {
     return `${clean} = ${defaultValue},`;
   } else if (type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(defaultValue);
+    if (definition.optional && node?.name === "undefined") {
+      return `${clean},`;
+    }
     return node
       ? `${clean} = <${capitalizedNameFromName(node.name)} />,`
       : `${clean} = "${defaultValue}",`;

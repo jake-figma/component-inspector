@@ -78,7 +78,7 @@ interface SafePropertyVariant {
   value: string | number;
 }
 
-export type SafePropertyDefinition = { name: string } & (
+export type SafePropertyDefinition = { name: string; optional?: boolean } & (
   | SafePropertyDefinitionBoolean
   | SafePropertyDefinitionExplicit
   | SafePropertyDefinitionNumber
@@ -86,7 +86,11 @@ export type SafePropertyDefinition = { name: string } & (
   | SafePropertyDefinitionVariant
 );
 
-export type SafeProperty = { name: string; default: boolean } & (
+export type SafeProperty = {
+  name: string;
+  default: boolean;
+  undefined?: boolean;
+} & (
   | SafePropertyBoolean
   | SafePropertyExplicit
   | SafePropertyNumber

@@ -124,11 +124,17 @@ function createSafePropertyDefinition(
 
   switch (type) {
     case "VARIANT":
+      const optionalIdx = variantOptions.indexOf("undefined");
+      let optional = optionalIdx !== -1;
+      if (optional) {
+        variantOptions.splice(optionalIdx, 1);
+      }
       return {
         name,
         type: type,
         defaultValue: rawValue,
         variantOptions,
+        optional,
       };
     case "BOOLEAN":
       return {
@@ -137,6 +143,12 @@ function createSafePropertyDefinition(
         defaultValue: asBoolean(rawValue),
       };
     case "INSTANCE_SWAP":
+      return {
+        name,
+        type,
+        defaultValue: rawValue,
+        optional: figma.getNodeById(rawValue)?.name === "undefined",
+      };
     case "TEXT":
     default:
       return {
@@ -186,12 +198,28 @@ function createSafeProperty(
         default: valueNumber === defaultValue,
       };
     case "INSTANCE_SWAP":
+      return {
+        name,
+        type,
+        value: valueString,
+        undefined:
+          definition.optional &&
+          figma.getNodeById(valueString)?.name === "undefined",
+        default: valueString === defaultValue,
+      };
     case "TEXT":
+      return {
+        name,
+        type,
+        value: valueString,
+        default: valueString === defaultValue,
+      };
     case "VARIANT":
       return {
         name,
         type,
         value: valueString,
+        undefined: definition.optional && valueString === "undefined",
         default: valueString === defaultValue,
       };
   }
