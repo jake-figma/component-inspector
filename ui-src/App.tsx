@@ -80,10 +80,19 @@ function App() {
     if (!tab) {
       const value = Object.values(resultsMap)[0];
       if (value) {
-        setTab(value.label);
+        handleTabChange(value.label);
       }
     }
-  }, [resultsMap, tab, setTab]);
+  }, [resultsMap, tab, handleTabChange]);
+
+  function handleTabChange(s: string) {
+    setTab(s);
+    handleTabIndexChange(0);
+  }
+
+  function handleTabIndexChange(i: number) {
+    setTabIndex(i);
+  }
 
   const result = tab ? resultsMap[tab] : null;
   const resultItem = result ? result.items[tabIndex] : null;
@@ -136,11 +145,6 @@ function App() {
     }
   }
 
-  function handleTabChange(s: string) {
-    setTab(s);
-    setTabIndex(0);
-  }
-
   return (
     <>
       <header>
@@ -153,7 +157,9 @@ function App() {
             ))}
           </select>
           {result ? (
-            <select onChange={(e) => setTabIndex(parseInt(e.target.value))}>
+            <select
+              onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}
+            >
               {result.items.map(({ label }, i) => (
                 <option key={label} selected={tabIndex === i} value={i}>
                   {label}
