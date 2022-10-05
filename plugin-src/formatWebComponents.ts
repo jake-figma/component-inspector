@@ -118,9 +118,8 @@ function formatDefinitionInputProperty(
 ): string {
   const { name, type, defaultValue, optional } = definition;
   const clean = propertyNameFromKey(name);
-  const q = optional ? "?" : "";
   if (type === "BOOLEAN") {
-    return `public ${clean}${q}: boolean = ${defaultValue};`;
+    return `public ${clean}?: boolean = ${defaultValue};`;
   } else if (type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(defaultValue);
     const value = node
@@ -129,19 +128,19 @@ function formatDefinitionInputProperty(
         : ` = "${capitalizedNameFromName(node.name)}";`
       : ` = "${defaultValue}"`;
     return node
-      ? `public ${clean}${q}: HTMLElement${value};`
-      : `public ${clean}${q}: string${value};`;
+      ? `public ${clean}?: HTMLElement${value};`
+      : `public ${clean}?: string${value};`;
   } else if (type === "NUMBER") {
-    return `public ${clean}${q}: number  = ${defaultValue};`;
+    return `public ${clean}?: number  = ${defaultValue};`;
   } else if (type === "VARIANT") {
-    return `public ${clean}${q}: ${typeNameForComponentProperty(
+    return `public ${clean}?: ${typeNameForComponentProperty(
       componentName,
       name
     )}${
       optional && defaultValue === "undefined" ? "" : ` = "${defaultValue}";`
     }`;
   } else {
-    return `public ${clean}${q}: string  = "${defaultValue}";`;
+    return `public ${clean}?: string  = "${defaultValue}";`;
   }
 }
 

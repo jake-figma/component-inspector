@@ -87,7 +87,9 @@ function App() {
 
   function handleTabChange(s: string) {
     setTab(s);
-    handleTabIndexChange(0);
+    if (!Boolean(resultsMap[s].items[tabIndex])) {
+      handleTabIndexChange(0);
+    }
   }
 
   function handleTabIndexChange(i: number) {

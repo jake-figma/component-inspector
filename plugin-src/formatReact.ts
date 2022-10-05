@@ -86,26 +86,25 @@ function formatInterfaceProperties(
   definition: SafePropertyDefinition
 ) {
   const name = propertyNameFromKey(propName);
-  const q = definition.optional ? "?" : "";
   if (definition.type === "BOOLEAN") {
-    return `${name}${q}: boolean;`;
+    return `${name}?: boolean;`;
   } else if (definition.type === "NUMBER") {
-    return `${name}${q}: number;`;
+    return `${name}?: number;`;
   } else if (definition.type === "TEXT") {
-    return `${name}${q}: string;`;
+    return `${name}?: string;`;
   } else if (definition.type === "VARIANT") {
     const n = `${interfaceName}${capitalizedNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
       .map((o) => `'${o}'`)
       .join(" | ");
     types[n] = value;
-    return `${name}${q}: ${n};`;
+    return `${name}?: ${n};`;
   } else if (definition.type === "EXPLICIT") {
-    return `${name}${q}: ${definition.defaultValue};`;
+    return `${name}?: ${definition.defaultValue};`;
   } else if (definition.type === "INSTANCE_SWAP") {
-    return `${name}${q}: React.ReactNode;`;
+    return `${name}?: React.ReactNode;`;
   } else {
-    return `${name}${q}: ${JSON.stringify(definition)};`;
+    return `${name}?: ${JSON.stringify(definition)};`;
   }
 }
 
