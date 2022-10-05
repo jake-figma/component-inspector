@@ -176,6 +176,8 @@ function formatJsxProp(
       : property.value
       ? clean
       : "";
+  } else if (property.type === "NUMBER") {
+    return `${clean}={${property.value}}`;
   } else if (property.type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(property.value);
     return node
@@ -195,9 +197,7 @@ function formatComponentFunctionFromDefinitionsAndMetas(
   const keys = Object.keys(definitions).sort();
   const destructuredProps = `{
     ${keys
-      .map((key) =>
-        formatDefinitionInputProperty(meta.name, key, definitions[key])
-      )
+      .map((key) => formatDefinitionInputProperty(definitions[key]))
       .join("\n")}
   }`;
   const propsName = `${capitalizedNameFromName(metas[key].name)}Props`;
@@ -207,8 +207,6 @@ function formatComponentFunctionFromDefinitionsAndMetas(
 }
 
 function formatDefinitionInputProperty(
-  componentName: string,
-  key: string,
   definition: SafePropertyDefinition
 ): string {
   const { name, type, defaultValue } = definition;
@@ -227,10 +225,4 @@ function formatDefinitionInputProperty(
   } else {
     return `${clean} = "${defaultValue}",`;
   }
-}
-
-function typeNameForComponentProperty(componentName: string, name: string) {
-  return `${capitalizedNameFromName(componentName)}${capitalizedNameFromName(
-    name
-  )}`;
 }
