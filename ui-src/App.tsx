@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { FormatLanguage, FormatResult, FormatSettings } from "../shared";
+import { FormatResult, FormatSettings } from "../shared";
 import {
   tomorrow as themeDark,
   materialLight as themeLight,
@@ -151,13 +151,18 @@ function App() {
     <>
       <header>
         <div>
-          <select onChange={(e) => handleTabChange(e.target.value)}>
-            {Object.values(resultsMap).map(({ label }) => (
-              <option key={label} selected={tab === label}>
-                {label}
-              </option>
-            ))}
-          </select>
+          {Object.keys(resultsMap).length > 1 ? (
+            <select onChange={(e) => handleTabChange(e.target.value)}>
+              {Object.values(resultsMap).map(({ label }) => (
+                <option key={label} selected={tab === label}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            tab
+          )}
+          &nbsp;
           {result ? (
             <select
               onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}

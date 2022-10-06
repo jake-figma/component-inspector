@@ -9,28 +9,23 @@ import {
 } from "./types";
 import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
 
-export function format(
-  adapter: Adapter,
-  instanceSettings?: FormatSettings
-): FormatResult {
+export function format(adapter: Adapter): FormatResult {
   return {
-    label: "React",
-    items: [
-      formatInstances(adapter, instanceSettings),
-      formatDefinitions(adapter),
-    ],
+    label: "Vue",
+    items: [formatInstances(adapter), formatDefinitions(adapter)],
   };
 }
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const types: TypeDefinitionsObject = {};
-  const interfaces: InterfaceDefinitionsObject = {};
-  const componentDefinitionFunctions: string[] = [];
+  const lines: string[] = [];
   Object.keys(definitions).forEach((key) => {
     const properties = definitions[key];
-    const interfaceName = `${capitalizedNameFromName(metas[key].name)}Props`;
-    const lines = Object.keys(properties)
+    const componentName = capitalizedNameFromName(metas[key].name);
+    const interfaceName = `${componentName}Props`;
+    const types: TypeDefinitionsObject = {};
+    const interfaces: InterfaceDefinitionsObject = {};
+    const interfaceLines = Object.keys(properties)
       .sort()
       .map((propName) =>
         formatInterfaceProperties(
@@ -41,42 +36,39 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
         )
       )
       .filter(Boolean);
-    interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
-    componentDefinitionFunctions.push(
-      formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas)
+    interfaces[key] = `interface ${interfaceName} { ${interfaceLines.join(
+      " "
+    )} }`;
+    lines.push(
+      [
+        `/**`,
+        ` * ${componentName}Component.vue setup <script />`,
+        ` */`,
+        "",
+        ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
+        "",
+        ...Object.values(interfaces),
+        "",
+        formatComponentPropsFromDefinitionsAndMetas(key, properties, metas),
+        "",
+      ].join("\n")
     );
   });
-  const lines = [
-    ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
-    ...Object.values(interfaces),
-    ...componentDefinitionFunctions,
-  ];
   return { label: "Definitions", language: "tsx", lines, settings: [] };
 }
 
-function formatInstances(
-  adapter: Adapter,
-  settings: FormatSettings = []
-): FormatResultItem {
+function formatInstances(adapter: Adapter): FormatResultItem {
   const { components } = adapter;
-  const [showDefaults, explicitBoolean, findText] = settings.map((a) =>
-    Boolean(a[1])
-  );
-  const lines = Object.values(components).map((component) =>
-    componentToJsxTypeString(
-      component,
-      adapter,
-      showDefaults,
-      explicitBoolean,
-      findText
-    )
-  );
+  const lines = [
+    Object.values(components)
+      .map((component) => componentToJsxTypeString(component, adapter))
+      .join("\n\n"),
+  ];
   return {
     label: "Instances",
-    language: "jsx",
+    language: "html",
     lines,
-    settings,
-    settingsKey: "reactInstance",
+    settings: [],
   };
 }
 
@@ -106,7 +98,7 @@ function formatInterfaceProperties(
   } else if (definition.type === "EXPLICIT") {
     return `${name}?: ${definition.defaultValue};`;
   } else if (definition.type === "INSTANCE_SWAP") {
-    return `${name}?: React.ReactNode;`;
+    return `${name}?: Component;`;
   } else {
     return `${name}?: ${JSON.stringify(definition)};`;
   }
@@ -115,36 +107,22 @@ function formatInterfaceProperties(
 type InterfaceDefinitionsObject = { [k: string]: string };
 type TypeDefinitionsObject = { [k: string]: string };
 
-function componentToJsxTypeString(
-  component: SafeComponent,
-  adapter: Adapter,
-  showDefaults: boolean,
-  explicitBoolean: boolean,
-  findText: boolean
-) {
+function componentToJsxTypeString(component: SafeComponent, adapter: Adapter) {
   const definitions = adapter.definitions[component.definition];
   const meta = adapter.metas[component.definition];
 
   const textKey = Object.keys(component.properties).find(
     (key) => definitions[key].type === "TEXT"
   );
-  const children: string | null =
-    findText && textKey
-      ? `${component.properties[textKey].value}` || null
-      : null;
-
   const neverDefaultType = (key: string) =>
     definitions[key].type === "INSTANCE_SWAP" ||
     definitions[key].type === "TEXT" ||
     definitions[key].type === "NUMBER";
   const isNotDefaultValue = (key: string) =>
     definitions[key].defaultValue !== component.properties[key].value;
-  const notTextChildrenKey = (key: string) => !children || key !== textKey;
 
   const propertyKeys = Object.keys(component.properties).filter(
-    (key) =>
-      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
-      notTextChildrenKey(key)
+    (key) => neverDefaultType(key) || isNotDefaultValue(key)
   );
 
   const isVisibleKey = (key: string) => {
@@ -161,59 +139,44 @@ function componentToJsxTypeString(
   const lines = propertyKeys
     .sort()
     .map((key: string) =>
-      isVisibleKey(key)
-        ? formatJsxProp(component.properties[key], key, explicitBoolean)
-        : null
+      isVisibleKey(key) ? formatJsxProp(component.properties[key], key) : null
     )
     .filter(Boolean);
   const n = capitalizedNameFromName(meta.name);
-  return `<${n} ${lines.join(" ")} ${children ? `>${children}</${n}>` : `/>`}`;
+  return `<${n}Component ${lines.join(" ")} />`;
 }
 
-function formatJsxProp(
-  property: SafeProperty,
-  name: string,
-  explicitBoolean: boolean
-) {
+function formatJsxProp(property: SafeProperty, name: string) {
   const clean = propertyNameFromKey(name);
   if (property.undefined) {
     return "";
   }
-  if (property.type === "BOOLEAN") {
-    return explicitBoolean
-      ? `${clean}={${property.value}}`
-      : property.value
-      ? clean
-      : "";
-  } else if (property.type === "NUMBER") {
-    return `${clean}={${property.value}}`;
+  if (property.type === "BOOLEAN" || property.type === "NUMBER") {
+    return `:${clean}="${property.value}"`;
   } else if (property.type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(property.value);
     return node
-      ? `${clean}={<${capitalizedNameFromName(node.name)} />}`
-      : `${clean}="${property.value}"`;
+      ? `:${clean}="${capitalizedNameFromName(node.name)}"`
+      : `:${clean}="${property.value}"`;
   } else {
     return `${clean}="${property.value}"`;
   }
 }
 
-function formatComponentFunctionFromDefinitionsAndMetas(
+function formatComponentPropsFromDefinitionsAndMetas(
   key: string,
   definitions: SafePropertyDefinitions,
   metas: SafePropertyDefinitionMetaMap
 ): string {
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
-  const destructuredProps = `{
+  const propsName = `${capitalizedNameFromName(meta.name)}Props`;
+  return `const props = withDefaults(defineProps<${propsName}>(), {
     ${keys
       .map((key) => formatDefinitionInputProperty(definitions[key]))
       .filter(Boolean)
       .join("\n")}
-  }`;
-  const propsName = `${capitalizedNameFromName(meta.name)}Props`;
-  return `const ${capitalizedNameFromName(
-    meta.name
-  )}: React.FC<${propsName}> = (${destructuredProps}) => {}`;
+  })`;
 }
 
 function formatDefinitionInputProperty(
@@ -228,20 +191,20 @@ function formatDefinitionInputProperty(
     return `${clean},`;
   }
   if (type === "BOOLEAN") {
-    return `${clean} = ${defaultValue},`;
+    return `${clean}: ${defaultValue},`;
   } else if (type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(defaultValue);
     if (definition.optional && node?.name === "undefined") {
       return `${clean},`;
     }
     return node
-      ? `${clean} = <${capitalizedNameFromName(node.name)} />,`
-      : `${clean} = "${defaultValue}",`;
+      ? `${clean}: <${capitalizedNameFromName(node.name)} />,`
+      : `${clean}: "${defaultValue}",`;
   } else if (type === "NUMBER") {
-    return `${clean}  = ${defaultValue},`;
+    return `${clean}: ${defaultValue},`;
   } else if (type === "VARIANT") {
-    return `${clean} = "${defaultValue}",`;
+    return `${clean}: "${defaultValue}",`;
   } else {
-    return `${clean} = "${defaultValue}",`;
+    return `${clean}: "${defaultValue}",`;
   }
 }

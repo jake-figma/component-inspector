@@ -6,7 +6,8 @@ import {
 import { format as formatAngular } from "./formatAngular";
 import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
-import { format as formatWebComponents } from "./formatWebComponents";
+import { format as formatVue } from "./formatVue";
+import { format as formatWebComponents } from "./formatWebComponents copy";
 import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
@@ -21,12 +22,18 @@ const nodes: SceneNode[] = [];
 function process() {
   const relevantNodes = componentNodesFromSceneNodes(nodes);
   const processed = adapter(relevantNodes);
-  const results: FormatResult[] = [
-    formatReact(processed, SETTINGS.reactInstance),
-    formatAngular(processed),
-    formatWebComponents(processed),
-    formatJSON(processed),
-  ];
+  const results: FormatResult[] = [];
+  const { command } = figma;
+  if (command === "all" || command === "angular")
+    results.push(formatAngular(processed));
+  if (command === "all" || command === "react")
+    results.push(formatReact(processed, SETTINGS.reactInstance));
+  if (command === "all" || command === "vue")
+    results.push(formatVue(processed));
+  if (command === "all" || command === "web")
+    results.push(formatWebComponents(processed));
+  if (command === "all" || command === "json")
+    results.push(formatJSON(processed));
 
   figma.ui.postMessage({ type: "RESULT", results });
 }
