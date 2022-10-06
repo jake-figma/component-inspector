@@ -3,7 +3,11 @@ export type SafePropertyReferencesMap = {
     [k: string]: { visible?: string; characters?: string };
   };
   properties: {
-    [k: string]: { visible?: boolean; characters?: boolean };
+    [k: string]: {
+      visibleProperties?: { [k: string]: true };
+      visibleNodes?: { [k: string]: true };
+      characterNodes?: { [k: string]: true };
+    };
   };
 };
 
@@ -78,7 +82,11 @@ interface SafePropertyVariant {
   value: string | number;
 }
 
-export type SafePropertyDefinition = { name: string; optional?: boolean } & (
+export type SafePropertyDefinition = {
+  name: string;
+  optional?: boolean;
+  hidden?: boolean;
+} & (
   | SafePropertyDefinitionBoolean
   | SafePropertyDefinitionExplicit
   | SafePropertyDefinitionNumber

@@ -39,7 +39,7 @@ function run() {
 
 figma.showUI(__html__, {
   visible: true,
-  width: 450,
+  width: 500,
   height: 900,
   themeColors: true,
 });

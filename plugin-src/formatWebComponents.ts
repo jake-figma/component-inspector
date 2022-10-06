@@ -64,7 +64,9 @@ function formatInstanceFromComponent(
   const lines = propertyKeys
     .sort()
     .map((key: string) =>
-      formatInstanceAttributeFromProperty(component.properties[key], key)
+      adapter.definitions[component.definition][key].hidden
+        ? null
+        : formatInstanceAttributeFromProperty(component.properties[key], key)
     )
     .filter(Boolean);
   const n = hyphenatedNameFromName(meta.name);
@@ -103,10 +105,18 @@ function formatComponentClassFromDefinitionsAndMetas(
       meta.name
     )}Component extends HTMLElement {`,
     keys
-      .map((key) => formatDefinitionInputProperty(meta.name, definitions[key]))
+      .map((key) =>
+        definitions[key].hidden
+          ? null
+          : formatDefinitionInputProperty(meta.name, definitions[key])
+      )
+      .filter(Boolean)
       .join("\n"),
     `public static get observedAttributes(): string[] {
-      return [${keys.map((k) => `'${propertyNameFromKey(k)}'`).join(", ")}];
+      return [${keys
+        .filter((key) => !definitions[key].hidden)
+        .map((key) => `'${propertyNameFromKey(key)}'`)
+        .join(", ")}];
     }`,
     "}",
   ];

@@ -39,7 +39,8 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
           types,
           properties[propName]
         )
-      );
+      )
+      .filter(Boolean);
     interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
     componentDefinitionFunctions.push(
       formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas)
@@ -86,6 +87,9 @@ function formatInterfaceProperties(
   definition: SafePropertyDefinition
 ) {
   const name = propertyNameFromKey(propName);
+  if (definition.hidden) {
+    return "";
+  }
   if (definition.type === "BOOLEAN") {
     return `${name}?: boolean;`;
   } else if (definition.type === "NUMBER") {
@@ -143,19 +147,21 @@ function componentToJsxTypeString(
       notTextChildrenKey(key)
   );
 
-  const isReferenceChecked = (name: string) => {
-    const key = adapter.references.instances[name]?.visible;
-    if (!key) {
-      return true;
+  const isVisibleKey = (key: string) => {
+    const isToggledByBoolean = adapter.references.instances[key]?.visible;
+    if (isToggledByBoolean) {
+      const visible = adapter.references.instances[key]?.visible || "";
+      return component.properties[visible]?.value;
+    } else if (definitions[key].hidden) {
+      return false;
     }
-    const visible = adapter.references.instances[name]?.visible || "";
-    return component.properties[visible]?.value;
+    return true;
   };
 
   const lines = propertyKeys
     .sort()
     .map((key: string) =>
-      isReferenceChecked(key)
+      isVisibleKey(key)
         ? formatJsxProp(component.properties[key], key, explicitBoolean)
         : null
     )
@@ -201,6 +207,7 @@ function formatComponentFunctionFromDefinitionsAndMetas(
   const destructuredProps = `{
     ${keys
       .map((key) => formatDefinitionInputProperty(definitions[key]))
+      .filter(Boolean)
       .join("\n")}
   }`;
   const propsName = `${capitalizedNameFromName(metas[key].name)}Props`;
@@ -214,6 +221,9 @@ function formatDefinitionInputProperty(
 ): string {
   const { name, type, defaultValue } = definition;
   const clean = propertyNameFromKey(name);
+  if (definition.hidden) {
+    return "";
+  }
   if (definition.optional && defaultValue === "undefined") {
     return `${clean},`;
   }

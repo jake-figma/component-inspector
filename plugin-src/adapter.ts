@@ -65,7 +65,7 @@ function processNodeInToSafeComponent(
   setSafePropertyReferencesMap(node, allReferences);
   allDefinitions[definition] =
     allDefinitions[definition] ||
-    getSafePropertyDefinitions(componentPropertyDefinitions);
+    getSafePropertyDefinitions(componentPropertyDefinitions, allReferences);
   allMetas[definition] = { name, id: definition };
   return {
     id: node.id,
@@ -80,7 +80,8 @@ function processNodeInToSafeComponent(
 
 function createSafePropertyDefinition(
   key: string,
-  componentPropertyDefinitions: ComponentPropertyDefinitions
+  componentPropertyDefinitions: ComponentPropertyDefinitions,
+  references: SafePropertyReferencesMap
 ): SafePropertyDefinition {
   const defs = componentPropertyDefinitions[key];
   const { type } = defs;
@@ -141,6 +142,7 @@ function createSafePropertyDefinition(
         name,
         type,
         defaultValue: asBoolean(rawValue),
+        hidden: Boolean(references.properties[key]?.visibleProperties),
       };
     case "INSTANCE_SWAP":
       return {
@@ -226,11 +228,16 @@ function createSafeProperty(
 }
 
 function getSafePropertyDefinitions(
-  componentPropertyDefinitions: ComponentPropertyDefinitions
+  componentPropertyDefinitions: ComponentPropertyDefinitions,
+  references: SafePropertyReferencesMap
 ) {
   const defs: { [k: string]: SafePropertyDefinition } = {};
   for (let key in componentPropertyDefinitions) {
-    defs[key] = createSafePropertyDefinition(key, componentPropertyDefinitions);
+    defs[key] = createSafePropertyDefinition(
+      key,
+      componentPropertyDefinitions,
+      references
+    );
   }
   return defs;
 }
@@ -281,6 +288,9 @@ function setSafePropertyReferencesMap(
   allReferences: SafePropertyReferencesMap
 ) {
   const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
+  if (node.type === "INSTANCE") {
+    console.log(node.componentProperties);
+  }
   const recurse = (nodes: readonly SceneNode[] = []) => {
     nodes.forEach((node) => {
       if (node.componentPropertyReferences) {
@@ -294,10 +304,27 @@ function setSafePropertyReferencesMap(
         }
         if (characters || visible) {
           if (characters) {
-            allReferences.properties[characters] = { characters: true };
+            allReferences.properties[characters] =
+              allReferences.properties[characters] || {};
+            allReferences.properties[characters].characterNodes = {
+              ...allReferences.properties[characters].characterNodes,
+              [node.id]: true,
+            };
           }
           if (visible) {
-            allReferences.properties[visible] = { visible: true };
+            allReferences.properties[visible] =
+              allReferences.properties[visible] || {};
+            if (mainComponent) {
+              allReferences.properties[visible].visibleProperties = {
+                ...allReferences.properties[visible].visibleProperties,
+                [mainComponent]: true,
+              };
+            } else {
+              allReferences.properties[visible].visibleNodes = {
+                ...allReferences.properties[visible].visibleNodes,
+                [node.id]: true,
+              };
+            }
           }
         }
       }

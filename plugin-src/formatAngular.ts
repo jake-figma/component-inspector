@@ -64,7 +64,9 @@ function formatInstanceFromComponent(
   const lines = propertyKeys
     .sort()
     .map((key: string) =>
-      formatInstanceAttributeFromProperty(component.properties[key], key)
+      adapter.definitions[component.definition][key].hidden
+        ? null
+        : formatInstanceAttributeFromProperty(component.properties[key], key)
     )
     .filter(Boolean);
   const n = hyphenatedNameFromName(meta.name);
@@ -102,7 +104,12 @@ function formatComponentClassFromDefinitionsAndMetas(
     `@Component({ selector: '${hyphenatedNameFromName(meta.name)}' })`,
     `class ${capitalizedNameFromName(meta.name)}Component {`,
     keys
-      .map((key) => formatDefinitionInputProperty(meta.name, definitions[key]))
+      .map((key) =>
+        definitions[key].hidden
+          ? null
+          : formatDefinitionInputProperty(meta.name, definitions[key])
+      )
+      .filter(Boolean)
       .join("\n"),
     "}",
   ];
