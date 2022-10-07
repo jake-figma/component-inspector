@@ -40,7 +40,7 @@ function formatInstances(
       findText,
       formatInstancesAttributeFromProperty,
       capitalizedNameFromName,
-      { selfClosing: true }
+      { selfClosing: true, slotAttr: "name" }
     )
   );
   return {

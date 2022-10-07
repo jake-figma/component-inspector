@@ -69,7 +69,8 @@ function formatInstances(
         explicitBoolean,
         findSlot,
         formatInstancesAttributeFromProperty,
-        hyphenatedNameFromName
+        hyphenatedNameFromName,
+        { slotAttr: "name" }
       )
     )
   );
