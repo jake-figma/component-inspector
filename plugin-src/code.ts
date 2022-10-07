@@ -10,61 +10,90 @@ import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
 import { FormatResult, FormatSettings } from "../shared";
 
-const SETTINGS: { [k: string]: FormatSettings } = {
-  instance: [
-    ["Default", 1],
-    ["Boolean", 0],
-    ["Slots", 1],
-  ],
-  vueDefinition: [[["Composition API", "Option API"], 0]],
-};
-const nodes: SceneNode[] = [];
+initialize();
 
-function process() {
-  const relevantNodes = componentNodesFromSceneNodes(nodes);
-  const processed = adapter(relevantNodes);
-  const results: FormatResult[] = [];
-  const { command } = figma;
-  if (command === "all" || command === "angular")
-    results.push(formatAngular(processed, SETTINGS.instance));
-  if (command === "all" || command === "react")
-    results.push(formatReact(processed, SETTINGS.instance));
-  if (command === "all" || command === "vue")
-    results.push(
-      formatVue(processed, SETTINGS.vueDefinition, SETTINGS.instance)
-    );
-  if (command === "all" || command === "web")
-    results.push(formatWebComponents(processed, SETTINGS.instance));
-  if (command === "all" || command === "json")
-    results.push(formatJSON(processed));
+async function initialize() {
+  figma.showUI(__html__, {
+    visible: true,
+    width: 550,
+    height: 900,
+    themeColors: true,
+  });
 
-  figma.ui.postMessage({ type: "RESULT", results });
-}
+  const initialSettings = (await figma.clientStorage.getAsync("settings")) || {
+    options: {},
+  };
+  const settings: {
+    tab?: string;
+    tabIndex?: number;
+    options: { [k: string]: FormatSettings };
+  } = {
+    options: {
+      instance: [
+        ["Default", 1],
+        ["Boolean", 0],
+        ["Slots", 1],
+      ],
+      vueDefinition: [[["Composition API", "Option API"], 0]],
+      ...initialSettings.options,
+    },
+  };
 
-function run() {
-  nodes.splice(0, nodes.length);
-  figma.currentPage.selection.forEach((node) => nodes.push(node));
-  process();
-}
+  const nodes: SceneNode[] = [];
 
-figma.showUI(__html__, {
-  visible: true,
-  width: 550,
-  height: 900,
-  themeColors: true,
-});
+  function process() {
+    const relevantNodes = componentNodesFromSceneNodes(nodes);
+    const processed = adapter(relevantNodes);
+    const results: FormatResult[] = [];
+    const { command } = figma;
+    if (command === "all" || command === "angular")
+      results.push(formatAngular(processed, settings.options.instance));
+    if (command === "all" || command === "react")
+      results.push(formatReact(processed, settings.options.instance));
+    if (command === "all" || command === "vue")
+      results.push(
+        formatVue(
+          processed,
+          settings.options.vueDefinition,
+          settings.options.instance
+        )
+      );
+    if (command === "all" || command === "web")
+      results.push(formatWebComponents(processed, settings.options.instance));
+    if (command === "all" || command === "json")
+      results.push(formatJSON(processed));
 
-figma.ui.onmessage = (message) => {
-  if (message.type === "SETTINGS") {
-    SETTINGS[message.settingsKey] = [...message.settings];
+    figma.ui.postMessage({
+      type: "RESULT",
+      results,
+      tab: initialSettings.tab,
+      tabIndex: initialSettings.tabIndex,
+    });
+  }
+
+  function run() {
+    nodes.splice(0, nodes.length);
+    figma.currentPage.selection.forEach((node) => nodes.push(node));
     process();
   }
-};
 
-figma.on("nodechange", (e) => {
-  if (nodeChangesIncludesComponents(e.nodeChanges)) {
-    run();
-  }
-});
-figma.on("selectionchange", run);
-run();
+  figma.ui.onmessage = async (message) => {
+    if (message.type === "SETTINGS") {
+      settings.tab = message.tab;
+      settings.tabIndex = message.tabIndex;
+      if (message.settings && message.settingsKey) {
+        settings.options[message.settingsKey] = [...message.settings];
+      }
+      await figma.clientStorage.setAsync("settings", settings);
+      process();
+    }
+  };
+
+  figma.on("nodechange", (e) => {
+    if (nodeChangesIncludesComponents(e.nodeChanges)) {
+      run();
+    }
+  });
+  figma.on("selectionchange", run);
+  run();
+}

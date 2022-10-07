@@ -41,15 +41,20 @@ function App() {
 
   useEffect(() => {
     window.onmessage = ({
-      data: {
-        pluginMessage: { type, results },
-      },
+      data: { pluginMessage },
     }: {
-      data: { pluginMessage: { type: "RESULT"; results: FormatResult[] } };
+      data: {
+        pluginMessage: {
+          type: "RESULT";
+          results: FormatResult[];
+          tab?: string;
+          tabIndex?: number;
+        };
+      };
     }) => {
-      if (type === "RESULT") {
+      if (pluginMessage.type === "RESULT") {
         const map = { ...resultsMap };
-        results.forEach((result) => {
+        pluginMessage.results.forEach((result) => {
           map[result.label] = {
             label: result.label,
             items: result.items.map((item) => ({
@@ -62,6 +67,13 @@ function App() {
           };
         });
         setResultsMap(map);
+        if (!tab) {
+          const initialTab =
+            pluginMessage.tab && pluginMessage.tab in resultsMap
+              ? pluginMessage.tab
+              : Object.values(resultsMap)[0]?.label || "";
+          handleTabChange(initialTab, pluginMessage.tabIndex);
+        }
       }
     };
 
@@ -76,38 +88,42 @@ function App() {
       });
       observer.observe(stylesheet, { childList: true });
     }
-  }, []);
+  }, [tab, resultsMap, handleTabChange, setTheme]);
 
-  useEffect(() => {
-    if (!tab) {
-      const value = Object.values(resultsMap)[0];
-      if (value) {
-        handleTabChange(value.label);
-      }
-    }
-  }, [resultsMap, tab, handleTabChange]);
-
-  function handleTabChange(s: string) {
+  function handleTabChange(s: string, index?: number) {
     setTab(s);
-    if (!Boolean(resultsMap[s].items[tabIndex])) {
-      handleTabIndexChange(0);
+    if (index !== undefined) {
+      handleTabIndexChange(index, s);
+    } else if (!Boolean(resultsMap[s]?.items[tabIndex])) {
+      handleTabIndexChange(0, s);
+    } else {
+      sendSettings({ tab: s });
     }
   }
 
-  function handleTabIndexChange(i: number) {
+  function handleTabIndexChange(i: number, t?: string) {
     setTabIndex(i);
+    sendSettings({ tab: t || tab, tabIndex: i });
   }
 
   const result = tab ? resultsMap[tab] : null;
-  const resultItem = result ? result.items[tabIndex] : null;
+  const resultItem = result ? result?.items[tabIndex] : null;
 
-  function sendSettings(settings: FormatSettings) {
+  function sendSettings(
+    overrides: {
+      settings?: FormatSettings;
+      tab?: string;
+      tabIndex?: number;
+    } = {}
+  ) {
     parent.postMessage(
       {
         pluginMessage: {
           type: "SETTINGS",
           settingsKey: resultItem?.settingsKey,
-          settings,
+          settings: overrides.settings || resultItem?.settings,
+          tab: overrides.tab || tab,
+          tabIndex: overrides.tabIndex || tabIndex,
         },
       },
       "*"
@@ -200,7 +216,7 @@ function App() {
                 onClick={() => {
                   const updated = [...resultItem.settings];
                   updated[i][1] = value ? 0 : 1;
-                  sendSettings(updated);
+                  sendSettings({ settings: updated });
                 }}
               >
                 {Array.isArray(label) ? label[value] : label}
