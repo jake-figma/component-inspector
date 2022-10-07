@@ -181,31 +181,33 @@ function App() {
   return (
     <>
       <header>
-        <div>
-          {Object.keys(resultsMap).length > 1 ? (
-            <select onChange={(e) => handleTabChange(e.target.value)}>
-              {Object.values(resultsMap).map(({ label }) => (
-                <option key={label} selected={tab === label}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <h3>{tab}</h3>
-          )}
-          &nbsp;
-          {result ? (
-            <select
-              onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}
-            >
-              {result.items.map(({ label }, i) => (
-                <option key={label} selected={tabIndex === i} value={i}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
+        {tab ? (
+          <div>
+            {Object.keys(resultsMap).length > 1 ? (
+              <select onChange={(e) => handleTabChange(e.target.value)}>
+                {Object.values(resultsMap).map(({ label }) => (
+                  <option key={label} selected={tab === label}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <h3>{tab}</h3>
+            )}
+            &nbsp;
+            {result ? (
+              <select
+                onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}
+              >
+                {result.items.map(({ label }, i) => (
+                  <option key={label} selected={tabIndex === i} value={i}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+        ) : null}
         {resultItem ? (
           <div>
             {resultItem.settings.map(([label, value], i) => (
