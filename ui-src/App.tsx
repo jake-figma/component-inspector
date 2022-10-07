@@ -149,13 +149,12 @@ function App() {
       case "json":
         return renderCode(resultItem.lines.join("\n"));
       case "jsx":
-        const jsxString =
-          resultItem.lines.length > 1
-            ? `<>${joiner(resultItem.lines)}</>`
-            : joiner(resultItem.lines);
-        return renderCode(
-          prettier.format(jsxString, prettierOptionsTS).replace(/;\n$/, "")
-        );
+        const jsxString = resultItem.lines
+          .map((line) =>
+            prettier.format(line, prettierOptionsTS).replace(/;\n$/, "")
+          )
+          .join("\n\n");
+        return renderCode(jsxString);
       case "ts":
       case "tsx":
         const tsString = joiner(resultItem.lines);

@@ -8,6 +8,7 @@ import {
   SafePropertyDefinitionMetaMap,
 } from "./types";
 import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
+import { formatInstancesInstanceFromComponent } from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -31,12 +32,15 @@ function formatInstances(
     Boolean(a[1])
   );
   const lines = Object.values(components).map((component) =>
-    componentToJsxTypeString(
+    formatInstancesInstanceFromComponent(
       component,
       adapter,
       showDefaults,
       explicitBoolean,
-      findText
+      findText,
+      formatInstancesAttributeFromProperty,
+      capitalizedNameFromName,
+      { selfClosing: true }
     )
   );
   return {
@@ -119,66 +123,9 @@ function formatDefinitionsInterfaceProperties(
   }
 }
 
-type InterfaceDefinitionsObject = { [k: string]: string };
 type TypeDefinitionsObject = { [k: string]: string };
 
-function componentToJsxTypeString(
-  component: SafeComponent,
-  adapter: Adapter,
-  showDefaults: boolean,
-  explicitBoolean: boolean,
-  findText: boolean
-) {
-  const definitions = adapter.definitions[component.definition];
-  const meta = adapter.metas[component.definition];
-
-  const textKey = Object.keys(component.properties).find(
-    (key) =>
-      definitions[key].type === "TEXT" && !component.properties[key].undefined
-  );
-  const children: string | null =
-    findText && textKey
-      ? `${component.properties[textKey].value}` || null
-      : null;
-
-  const neverDefaultType = (key: string) =>
-    definitions[key].type === "INSTANCE_SWAP" ||
-    definitions[key].type === "TEXT" ||
-    definitions[key].type === "NUMBER";
-  const isNotDefaultValue = (key: string) =>
-    definitions[key].defaultValue !== component.properties[key].value;
-  const notTextChildrenKey = (key: string) => !children || key !== textKey;
-
-  const propertyKeys = Object.keys(component.properties).filter(
-    (key) =>
-      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
-      notTextChildrenKey(key)
-  );
-
-  const isVisibleKey = (key: string) => {
-    const isToggledByBoolean = adapter.references.instances[key]?.visible;
-    if (isToggledByBoolean) {
-      const visible = adapter.references.instances[key]?.visible || "";
-      return component.properties[visible]?.value;
-    } else if (definitions[key].hidden) {
-      return false;
-    }
-    return true;
-  };
-
-  const lines = propertyKeys
-    .sort()
-    .map((key: string) =>
-      isVisibleKey(key)
-        ? formatJsxProp(component.properties[key], key, explicitBoolean)
-        : null
-    )
-    .filter(Boolean);
-  const n = capitalizedNameFromName(meta.name);
-  return `<${n} ${lines.join(" ")} ${children ? `>${children}</${n}>` : `/>`}`;
-}
-
-function formatJsxProp(
+function formatInstancesAttributeFromProperty(
   property: SafeProperty,
   name: string,
   explicitBoolean: boolean
