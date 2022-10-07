@@ -14,7 +14,7 @@ const SETTINGS: { [k: string]: FormatSettings } = {
   instance: [
     ["Default", 1],
     ["Boolean", 0],
-    ["Slot", 0],
+    ["Slots", 1],
   ],
   vueDefinition: [[["Composition API", "Option API"], 0]],
 };

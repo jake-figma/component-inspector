@@ -12,6 +12,7 @@ import {
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
+import { formatInstancesInstanceFromComponent } from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -66,7 +67,10 @@ function formatInstances(
         adapter,
         showDefaults,
         explicitBoolean,
-        findSlot
+        findSlot,
+        formatInstancesAttributeFromProperty,
+        hyphenatedNameFromName,
+        { slotAttr: "slot" }
       )
     )
   );
@@ -77,67 +81,6 @@ function formatInstances(
     settings,
     settingsKey: "instance",
   };
-}
-
-function formatInstancesInstanceFromComponent(
-  component: SafeComponent,
-  adapter: Adapter,
-  showDefaults: boolean,
-  explicitBoolean: boolean,
-  findSlot: boolean
-) {
-  const definitions = adapter.definitions[component.definition];
-  const meta = adapter.metas[component.definition];
-
-  const textKey = Object.keys(component.properties).find(
-    (key) =>
-      definitions[key].type === "TEXT" && !component.properties[key].undefined
-  );
-  const slot: string | null =
-    findSlot && textKey
-      ? `${component.properties[textKey].value}` || null
-      : null;
-
-  const neverDefaultType = (key: string) =>
-    definitions[key].type === "INSTANCE_SWAP" ||
-    definitions[key].type === "TEXT" ||
-    definitions[key].type === "NUMBER";
-  const isNotDefaultValue = (key: string) =>
-    definitions[key].defaultValue !== component.properties[key].value;
-  const notTextChildrenKey = (key: string) => !slot || key !== textKey;
-
-  const propertyKeys = Object.keys(component.properties).filter(
-    (key) =>
-      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
-      notTextChildrenKey(key)
-  );
-
-  const isVisibleKey = (key: string) => {
-    const isToggledByBoolean = adapter.references.instances[key]?.visible;
-    if (isToggledByBoolean) {
-      const visible = adapter.references.instances[key]?.visible || "";
-      return component.properties[visible]?.value;
-    } else if (definitions[key].hidden) {
-      return false;
-    }
-    return true;
-  };
-
-  const lines = propertyKeys
-    .sort()
-    .map((key: string) =>
-      adapter.definitions[component.definition][key].hidden ||
-      !isVisibleKey(key)
-        ? null
-        : formatInstancesAttributeFromProperty(
-            component.properties[key],
-            key,
-            explicitBoolean
-          )
-    )
-    .filter(Boolean);
-  const n = hyphenatedNameFromName(meta.name);
-  return `<${n} ${lines.join(" ")}>${slot || ""}</${n}>\n`;
 }
 
 function formatInstancesAttributeFromProperty(

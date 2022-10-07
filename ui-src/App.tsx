@@ -7,7 +7,7 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import prettier from "prettier/esm/standalone.mjs";
 import parserBabel from "prettier/esm/parser-babel.mjs";
-import parserHTML from "prettier/esm/parser-html.mjs";
+import parserHTMLCustom from "./parser-html-custom";
 import "./App.css";
 
 const prettierOptionsTS = {
@@ -17,9 +17,9 @@ const prettierOptionsTS = {
   semi: true,
 };
 const prettierOptionsHTML = {
-  printWidth: 40,
+  printWidth: 50,
   parser: "html",
-  plugins: [parserHTML],
+  plugins: [parserHTMLCustom],
   htmlWhitespaceSensitivity: "ignore",
   bracketSameLine: false,
 };
@@ -137,10 +137,7 @@ function App() {
         );
       case "vue":
         return renderCode(
-          prettier.format(resultItem.lines.join("\n"), {
-            ...prettierOptionsHTML,
-            parser: "vue",
-          })
+          prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
         );
       case "angular":
         return renderCode(
