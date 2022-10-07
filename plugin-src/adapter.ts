@@ -31,6 +31,8 @@ export function adapter(nodes: RelevantComponentNode[]): Adapter {
   const components: SafeComponentMap = {};
   const references: SafePropertyReferencesMap = {
     instances: {},
+    characterNodes: {},
+    visibleNodes: {},
     properties: {},
   };
   nodes.forEach((node) => {
@@ -73,7 +75,8 @@ function processNodeInToSafeComponent(
     definition,
     properties: getSafeProperties(
       allDefinitions[definition],
-      componentProperties
+      componentProperties,
+      allReferences
     ),
   };
 }
@@ -138,11 +141,16 @@ function createSafePropertyDefinition(
         optional,
       };
     case "BOOLEAN":
+      const ref = references.properties[key];
+      const nodes = Object.keys(ref?.visibleNodes || {});
+      const hidden =
+        Boolean(ref?.visibleProperties) ||
+        Boolean(nodes.find((id) => Boolean(references.characterNodes[id])));
       return {
         name,
         type,
         defaultValue: asBoolean(rawValue),
-        hidden: Boolean(references.properties[key]?.visibleProperties),
+        hidden,
       };
     case "INSTANCE_SWAP":
       return {
@@ -164,7 +172,8 @@ function createSafePropertyDefinition(
 function createSafeProperty(
   key: string,
   definition: SafePropertyDefinition,
-  componentProperties: ComponentProperties
+  componentProperties: ComponentProperties,
+  references: SafePropertyReferencesMap
 ): SafeProperty {
   const { type, defaultValue } = definition;
   const property = componentProperties[key];
@@ -210,10 +219,17 @@ function createSafeProperty(
         default: valueString === defaultValue,
       };
     case "TEXT":
+      const charNodeId = Object.keys(
+        references.properties[key].characterNodes || {}
+      )[0];
       return {
         name,
         type,
         value: valueString,
+        undefined: charNodeId
+          ? componentProperties[references.visibleNodes[charNodeId]]?.value ===
+            false
+          : false,
         default: valueString === defaultValue,
       };
     case "VARIANT":
@@ -244,14 +260,16 @@ function getSafePropertyDefinitions(
 
 function getSafeProperties(
   definitions: SafePropertyDefinitions,
-  componentProperties: ComponentProperties
+  componentProperties: ComponentProperties,
+  references: SafePropertyReferencesMap
 ) {
   const properties: SafeProperties = {};
   for (let key in componentProperties) {
     properties[key] = createSafeProperty(
       key,
       definitions[key],
-      componentProperties
+      componentProperties,
+      references
     );
   }
   return properties;
@@ -307,8 +325,10 @@ function setSafePropertyReferencesMap(
               ...allReferences.properties[characters].characterNodes,
               [node.id]: true,
             };
+            allReferences.characterNodes[node.id] = characters;
           }
           if (visible) {
+            allReferences.visibleNodes[node.id] = visible;
             allReferences.properties[visible] =
               allReferences.properties[visible] || {};
             if (mainComponent) {

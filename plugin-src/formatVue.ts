@@ -77,7 +77,7 @@ function formatInstances(
     language: "vue",
     lines,
     settings,
-    settingsKey: "vueInstance",
+    settingsKey: "instance",
   };
 }
 
@@ -246,7 +246,8 @@ function componentToJsxTypeString(
   const meta = adapter.metas[component.definition];
 
   const textKey = Object.keys(component.properties).find(
-    (key) => definitions[key].type === "TEXT"
+    (key) =>
+      definitions[key].type === "TEXT" && !component.properties[key].undefined
   );
   const slot: string | null =
     findSlot && textKey

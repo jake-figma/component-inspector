@@ -44,7 +44,7 @@ function formatInstances(
     language: "jsx",
     lines,
     settings,
-    settingsKey: "reactInstance",
+    settingsKey: "instance",
   };
 }
 
@@ -133,7 +133,8 @@ function componentToJsxTypeString(
   const meta = adapter.metas[component.definition];
 
   const textKey = Object.keys(component.properties).find(
-    (key) => definitions[key].type === "TEXT"
+    (key) =>
+      definitions[key].type === "TEXT" && !component.properties[key].undefined
   );
   const children: string | null =
     findText && textKey

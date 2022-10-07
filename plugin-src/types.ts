@@ -2,6 +2,8 @@ export type SafePropertyReferencesMap = {
   instances: {
     [k: string]: { visible?: string; characters?: string };
   };
+  characterNodes: { [k: string]: string };
+  visibleNodes: { [k: string]: string };
   properties: {
     [k: string]: {
       visibleProperties?: { [k: string]: true };

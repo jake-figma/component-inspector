@@ -11,27 +11,12 @@ import { format as formatWebComponents } from "./formatWebComponents";
 import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
-  angularInstance: [
+  instance: [
     ["Default", 1],
     ["Boolean", 0],
     ["Slot", 0],
-  ],
-  reactInstance: [
-    ["Default", 1],
-    ["Boolean", 0],
-    ["Children", 0],
   ],
   vueDefinition: [[["Composition API", "Option API"], 0]],
-  vueInstance: [
-    ["Default", 1],
-    ["Boolean", 0],
-    ["Slot", 0],
-  ],
-  webComponentsInstance: [
-    ["Default", 1],
-    ["Boolean", 0],
-    ["Slot", 0],
-  ],
 };
 const nodes: SceneNode[] = [];
 
@@ -41,17 +26,15 @@ function process() {
   const results: FormatResult[] = [];
   const { command } = figma;
   if (command === "all" || command === "angular")
-    results.push(formatAngular(processed, SETTINGS.angularInstance));
+    results.push(formatAngular(processed, SETTINGS.instance));
   if (command === "all" || command === "react")
-    results.push(formatReact(processed, SETTINGS.reactInstance));
+    results.push(formatReact(processed, SETTINGS.instance));
   if (command === "all" || command === "vue")
     results.push(
-      formatVue(processed, SETTINGS.vueDefinition, SETTINGS.vueInstance)
+      formatVue(processed, SETTINGS.vueDefinition, SETTINGS.instance)
     );
   if (command === "all" || command === "web")
-    results.push(
-      formatWebComponents(processed, SETTINGS.webComponentsInstance)
-    );
+    results.push(formatWebComponents(processed, SETTINGS.instance));
   if (command === "all" || command === "json")
     results.push(formatJSON(processed));
 
