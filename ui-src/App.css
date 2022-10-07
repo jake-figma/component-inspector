@@ -54,6 +54,12 @@ header > div {
   gap: 0.25rem;
 }
 
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
 button,
 select {
   border-radius: 0.25rem;

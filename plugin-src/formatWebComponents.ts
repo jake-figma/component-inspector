@@ -15,7 +15,7 @@ import {
 
 export function format(adapter: Adapter): FormatResult {
   return {
-    label: "Web",
+    label: "Web Components",
     items: [formatInstances(adapter), formatDefinitions(adapter)],
   };
 }

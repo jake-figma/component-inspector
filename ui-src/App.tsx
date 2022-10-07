@@ -3,7 +3,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { FormatResult, FormatSettings } from "../shared";
 import {
   tomorrow as themeDark,
-  materialLight as themeLight,
+  base16AteliersulphurpoolLight as themeLight,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 import prettier from "prettier/esm/standalone.mjs";
 import parserBabel from "prettier/esm/parser-babel.mjs";
@@ -160,7 +160,7 @@ function App() {
               ))}
             </select>
           ) : (
-            tab
+            <h3>{tab}</h3>
           )}
           &nbsp;
           {result ? (

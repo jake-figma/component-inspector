@@ -7,7 +7,7 @@ import { format as formatAngular } from "./formatAngular";
 import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
-import { format as formatWebComponents } from "./formatWebComponents copy";
+import { format as formatWebComponents } from "./formatWebComponents";
 import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
