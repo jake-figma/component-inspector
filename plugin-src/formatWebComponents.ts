@@ -13,10 +13,16 @@ import {
   propertyNameFromKey,
 } from "./utils";
 
-export function format(adapter: Adapter): FormatResult {
+export function format(
+  adapter: Adapter,
+  instanceSettings: FormatSettings
+): FormatResult {
   return {
     label: "Web Components",
-    items: [formatInstances(adapter), formatDefinitions(adapter)],
+    items: [
+      formatInstances(adapter, instanceSettings),
+      formatDefinitions(adapter),
+    ],
   };
 }
 
@@ -41,48 +47,110 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   };
 }
 
-function formatInstances(adapter: Adapter): FormatResultItem {
+function formatInstances(
+  adapter: Adapter,
+  settings: FormatSettings
+): FormatResultItem {
+  const [showDefaults, explicitBoolean, findSlot] = settings.map((a) =>
+    Boolean(a[1])
+  );
   const { components } = adapter;
   const lines: string[] = [];
   Object.values(components).forEach((component) =>
-    lines.push(formatInstanceFromComponent(component, adapter))
+    lines.push(
+      formatInstanceFromComponent(
+        component,
+        adapter,
+        showDefaults,
+        explicitBoolean,
+        findSlot
+      )
+    )
   );
   return {
     label: "Instances",
     language: "html",
     lines,
-    settings: [],
+    settings,
+    settingsKey: "webComponentsInstance",
   };
 }
 
 function formatInstanceFromComponent(
   component: SafeComponent,
-  adapter: Adapter
+  adapter: Adapter,
+  showDefaults: boolean,
+  explicitBoolean: boolean,
+  findSlot: boolean
 ) {
+  const definitions = adapter.definitions[component.definition];
   const meta = adapter.metas[component.definition];
-  const propertyKeys = Object.keys(component.properties);
+
+  const textKey = Object.keys(component.properties).find(
+    (key) => definitions[key].type === "TEXT"
+  );
+  const slot: string | null =
+    findSlot && textKey
+      ? `${component.properties[textKey].value}` || null
+      : null;
+
+  const neverDefaultType = (key: string) =>
+    definitions[key].type === "INSTANCE_SWAP" ||
+    definitions[key].type === "TEXT" ||
+    definitions[key].type === "NUMBER";
+  const isNotDefaultValue = (key: string) =>
+    definitions[key].defaultValue !== component.properties[key].value;
+  const notTextChildrenKey = (key: string) => !slot || key !== textKey;
+
+  const propertyKeys = Object.keys(component.properties).filter(
+    (key) =>
+      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
+      notTextChildrenKey(key)
+  );
+
+  const isVisibleKey = (key: string) => {
+    const isToggledByBoolean = adapter.references.instances[key]?.visible;
+    if (isToggledByBoolean) {
+      const visible = adapter.references.instances[key]?.visible || "";
+      return component.properties[visible]?.value;
+    } else if (definitions[key].hidden) {
+      return false;
+    }
+    return true;
+  };
+
   const lines = propertyKeys
     .sort()
     .map((key: string) =>
-      adapter.definitions[component.definition][key].hidden
+      adapter.definitions[component.definition][key].hidden ||
+      !isVisibleKey(key)
         ? null
-        : formatInstanceAttributeFromProperty(component.properties[key], key)
+        : formatInstanceAttributeFromProperty(
+            component.properties[key],
+            key,
+            explicitBoolean
+          )
     )
     .filter(Boolean);
   const n = hyphenatedNameFromName(meta.name);
-  return `<${n} ${lines.join(" ")}></${n}>\n`;
+  return `<${n} ${lines.join(" ")}>${slot || ""}</${n}>\n`;
 }
 
 function formatInstanceAttributeFromProperty(
   property: SafeProperty,
-  name: string
+  name: string,
+  explicitBoolean: boolean
 ) {
   if (property.undefined) {
     return "";
   }
   const clean = propertyNameFromKey(name);
   if (property.type === "BOOLEAN") {
-    return `${clean}="${property.value}"`;
+    return explicitBoolean
+      ? `${clean}="${property.value}"`
+      : property.value
+      ? `${clean}`
+      : "";
   } else if (property.type === "INSTANCE_SWAP") {
     const node = figma.getNodeById(property.value);
     return node

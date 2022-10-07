@@ -11,6 +11,11 @@ import { format as formatWebComponents } from "./formatWebComponents";
 import { FormatResult, FormatSettings } from "../shared";
 
 const SETTINGS: { [k: string]: FormatSettings } = {
+  angularInstance: [
+    ["Default", 1],
+    ["Boolean", 0],
+    ["Slot", 0],
+  ],
   reactInstance: [
     ["Default", 1],
     ["Boolean", 0],
@@ -18,6 +23,11 @@ const SETTINGS: { [k: string]: FormatSettings } = {
   ],
   vueDefinition: [[["Composition API", "Option API"], 0]],
   vueInstance: [
+    ["Default", 1],
+    ["Boolean", 0],
+    ["Slot", 0],
+  ],
+  webComponentsInstance: [
     ["Default", 1],
     ["Boolean", 0],
     ["Slot", 0],
@@ -31,7 +41,7 @@ function process() {
   const results: FormatResult[] = [];
   const { command } = figma;
   if (command === "all" || command === "angular")
-    results.push(formatAngular(processed));
+    results.push(formatAngular(processed, SETTINGS.angularInstance));
   if (command === "all" || command === "react")
     results.push(formatReact(processed, SETTINGS.reactInstance));
   if (command === "all" || command === "vue")
@@ -39,7 +49,9 @@ function process() {
       formatVue(processed, SETTINGS.vueDefinition, SETTINGS.vueInstance)
     );
   if (command === "all" || command === "web")
-    results.push(formatWebComponents(processed));
+    results.push(
+      formatWebComponents(processed, SETTINGS.webComponentsInstance)
+    );
   if (command === "all" || command === "json")
     results.push(formatJSON(processed));
 
