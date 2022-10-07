@@ -157,7 +157,7 @@ function formatDefinitionsLineForOptionsAPI(
     .sort()
     .map((propName) =>
       formatDefinitionsOptionsProperties(
-        `${componentName}Component`,
+        componentName,
         propName,
         types,
         properties[propName]
