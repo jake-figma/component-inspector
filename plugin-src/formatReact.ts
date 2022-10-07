@@ -104,7 +104,7 @@ function formatInterfaceProperties(
     types[n] = value;
     return `${name}?: ${n};`;
   } else if (definition.type === "EXPLICIT") {
-    return `${name}?: ${definition.defaultValue};`;
+    return `${name}?: "${definition.defaultValue}";`;
   } else if (definition.type === "INSTANCE_SWAP") {
     return `${name}?: React.ReactNode;`;
   } else {

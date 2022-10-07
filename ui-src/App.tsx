@@ -20,6 +20,7 @@ const prettierOptionsHTML = {
   printWidth: 40,
   parser: "html",
   plugins: [parserHTML],
+  htmlWhitespaceSensitivity: "ignore",
 };
 
 const joiner = (items: string[]) => items.join("\n\n");
@@ -114,19 +115,21 @@ function App() {
 
   function renderedResult() {
     if (!resultItem) return null;
+    const lang = resultItem.language;
 
     const renderCode = (text: string) => (
       <SyntaxHighlighter
         customStyle={{ margin: 0 }}
-        language={resultItem?.language}
+        language={lang === "vue" ? "tsx" : lang}
         style={theme}
       >
         {text}
       </SyntaxHighlighter>
     );
 
-    switch (resultItem.language) {
+    switch (lang) {
       case "html":
+      case "vue":
         return renderCode(
           prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
         );
@@ -179,14 +182,16 @@ function App() {
           <div>
             {resultItem.settings.map(([label, value], i) => (
               <button
-                className={value ? "brand small" : "small"}
+                className={
+                  value || Array.isArray(label) ? "brand small" : "small"
+                }
                 onClick={() => {
                   const updated = [...resultItem.settings];
                   updated[i][1] = value ? 0 : 1;
                   sendSettings(updated);
                 }}
               >
-                {label}
+                {Array.isArray(label) ? label[value] : label}
               </button>
             ))}
           </div>

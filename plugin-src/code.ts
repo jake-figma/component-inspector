@@ -13,8 +13,14 @@ import { FormatResult, FormatSettings } from "../shared";
 const SETTINGS: { [k: string]: FormatSettings } = {
   reactInstance: [
     ["Default", 1],
-    ["Bool", 0],
-    ["Text", 0],
+    ["Boolean", 0],
+    ["Children", 0],
+  ],
+  vueDefinition: [[["Composition API", "Option API"], 0]],
+  vueInstance: [
+    ["Default", 1],
+    ["Boolean", 0],
+    ["Slot", 0],
   ],
 };
 const nodes: SceneNode[] = [];
@@ -29,7 +35,9 @@ function process() {
   if (command === "all" || command === "react")
     results.push(formatReact(processed, SETTINGS.reactInstance));
   if (command === "all" || command === "vue")
-    results.push(formatVue(processed));
+    results.push(
+      formatVue(processed, SETTINGS.vueDefinition, SETTINGS.vueInstance)
+    );
   if (command === "all" || command === "web")
     results.push(formatWebComponents(processed));
   if (command === "all" || command === "json")
@@ -46,7 +54,7 @@ function run() {
 
 figma.showUI(__html__, {
   visible: true,
-  width: 500,
+  width: 550,
   height: 900,
   themeColors: true,
 });
