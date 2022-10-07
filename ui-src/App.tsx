@@ -21,6 +21,7 @@ const prettierOptionsHTML = {
   parser: "html",
   plugins: [parserHTML],
   htmlWhitespaceSensitivity: "ignore",
+  bracketSameLine: false,
 };
 
 const joiner = (items: string[]) => items.join("\n\n");
@@ -116,11 +117,13 @@ function App() {
   function renderedResult() {
     if (!resultItem) return null;
     const lang = resultItem.language;
+    const language =
+      lang === "vue" ? "tsx" : lang === "angular" ? "html" : lang;
 
     const renderCode = (text: string) => (
       <SyntaxHighlighter
         customStyle={{ margin: 0 }}
-        language={lang === "vue" ? "tsx" : lang}
+        language={language}
         style={theme}
       >
         {text}
@@ -129,9 +132,22 @@ function App() {
 
     switch (lang) {
       case "html":
-      case "vue":
         return renderCode(
           prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
+        );
+      case "vue":
+        return renderCode(
+          prettier.format(resultItem.lines.join("\n"), {
+            ...prettierOptionsHTML,
+            parser: "vue",
+          })
+        );
+      case "angular":
+        return renderCode(
+          prettier.format(resultItem.lines.join("\n"), {
+            ...prettierOptionsHTML,
+            parser: "angular",
+          })
         );
       case "json":
         return renderCode(resultItem.lines.join("\n"));

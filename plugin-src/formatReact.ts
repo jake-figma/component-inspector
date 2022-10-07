@@ -22,38 +22,6 @@ export function format(
   };
 }
 
-function formatDefinitions(adapter: Adapter): FormatResultItem {
-  const { definitions, metas } = adapter;
-  const types: TypeDefinitionsObject = {};
-  const interfaces: InterfaceDefinitionsObject = {};
-  const componentDefinitionFunctions: string[] = [];
-  Object.keys(definitions).forEach((key) => {
-    const properties = definitions[key];
-    const interfaceName = `${capitalizedNameFromName(metas[key].name)}Props`;
-    const lines = Object.keys(properties)
-      .sort()
-      .map((propName) =>
-        formatInterfaceProperties(
-          interfaceName,
-          propName,
-          types,
-          properties[propName]
-        )
-      )
-      .filter(Boolean);
-    interfaces[key] = `interface ${interfaceName} { ${lines.join(" ")} }`;
-    componentDefinitionFunctions.push(
-      formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas)
-    );
-  });
-  const lines = [
-    ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
-    ...Object.values(interfaces),
-    ...componentDefinitionFunctions,
-  ];
-  return { label: "Definitions", language: "tsx", lines, settings: [] };
-}
-
 function formatInstances(
   adapter: Adapter,
   settings: FormatSettings = []
@@ -80,7 +48,46 @@ function formatInstances(
   };
 }
 
-function formatInterfaceProperties(
+function formatDefinitions(adapter: Adapter): FormatResultItem {
+  const { definitions, metas } = adapter;
+  const lines: string[] = [
+    `import {
+    FC,
+    ReactNode,
+  } from "react";`,
+  ];
+  Object.keys(definitions).forEach((key) => {
+    const types: TypeDefinitionsObject = {};
+    const properties = definitions[key];
+    const componentName = capitalizedNameFromName(metas[key].name);
+    const interfaceName = `${componentName}Props`;
+    const interfaceLines = Object.keys(properties)
+      .sort()
+      .map((propName) =>
+        formatDefinitionsInterfaceProperties(
+          interfaceName,
+          propName,
+          types,
+          properties[propName]
+        )
+      )
+      .filter(Boolean);
+    lines.push(
+      [
+        [`/**`, ` * ${componentName} Component`, ` */`].join("\n"),
+        Object.keys(types)
+          .map((name) => `type ${name} = ${types[name]};`)
+          .join("\n"),
+        `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
+        formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas),
+      ].join("\n\n")
+    );
+  });
+
+  return { label: "Definitions", language: "tsx", lines, settings: [] };
+}
+
+function formatDefinitionsInterfaceProperties(
   interfaceName: string,
   propName: string,
   types: TypeDefinitionsObject,
@@ -106,7 +113,7 @@ function formatInterfaceProperties(
   } else if (definition.type === "EXPLICIT") {
     return `${name}?: "${definition.defaultValue}";`;
   } else if (definition.type === "INSTANCE_SWAP") {
-    return `${name}?: React.ReactNode;`;
+    return `${name}?: ReactNode;`;
   } else {
     return `${name}?: ${JSON.stringify(definition)};`;
   }
@@ -213,7 +220,7 @@ function formatComponentFunctionFromDefinitionsAndMetas(
   const propsName = `${capitalizedNameFromName(meta.name)}Props`;
   return `const ${capitalizedNameFromName(
     meta.name
-  )}: React.FC<${propsName}> = (${destructuredProps}) => {}`;
+  )}: FC<${propsName}> = (${destructuredProps}) => (<></>)`;
 }
 
 function formatDefinitionInputProperty(

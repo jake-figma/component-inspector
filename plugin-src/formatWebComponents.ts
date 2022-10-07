@@ -28,17 +28,20 @@ export function format(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const types: string[] = [];
-  const components: string[] = [];
+  const lines: string[] = [];
   Object.entries(definitions).forEach(([key, definition]) => {
-    types.push(
-      ...variantOptionTypesFromDefinitions(metas[key].name, definition)
-    );
-    components.push(
-      ...formatComponentClassFromDefinitionsAndMetas(key, definition, metas)
+    lines.push(
+      [
+        `/**`,
+        ` * ${capitalizedNameFromName(metas[key].name)} Component`,
+        ` */`,
+      ].join("\n"),
+      formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
+        "\n"
+      ),
+      ...formatDefinitionsComponentClass(key, definition, metas)
     );
   });
-  const lines = [...types.sort(), ...components];
   return {
     label: "Definitions",
     language: "ts",
@@ -58,7 +61,7 @@ function formatInstances(
   const lines: string[] = [];
   Object.values(components).forEach((component) =>
     lines.push(
-      formatInstanceFromComponent(
+      formatInstancesInstanceFromComponent(
         component,
         adapter,
         showDefaults,
@@ -76,7 +79,7 @@ function formatInstances(
   };
 }
 
-function formatInstanceFromComponent(
+function formatInstancesInstanceFromComponent(
   component: SafeComponent,
   adapter: Adapter,
   showDefaults: boolean,
@@ -125,7 +128,7 @@ function formatInstanceFromComponent(
       adapter.definitions[component.definition][key].hidden ||
       !isVisibleKey(key)
         ? null
-        : formatInstanceAttributeFromProperty(
+        : formatInstancesAttributeFromProperty(
             component.properties[key],
             key,
             explicitBoolean
@@ -136,7 +139,7 @@ function formatInstanceFromComponent(
   return `<${n} ${lines.join(" ")}>${slot || ""}</${n}>\n`;
 }
 
-function formatInstanceAttributeFromProperty(
+function formatInstancesAttributeFromProperty(
   property: SafeProperty,
   name: string,
   explicitBoolean: boolean
@@ -161,7 +164,7 @@ function formatInstanceAttributeFromProperty(
   }
 }
 
-function formatComponentClassFromDefinitionsAndMetas(
+function formatDefinitionsComponentClass(
   key: string,
   definitions: SafePropertyDefinitions,
   metas: SafePropertyDefinitionMetaMap
@@ -169,14 +172,12 @@ function formatComponentClassFromDefinitionsAndMetas(
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
   return [
-    `class ${capitalizedNameFromName(
-      meta.name
-    )}Component extends HTMLElement {`,
+    `class ${capitalizedNameFromName(meta.name)} extends HTMLElement {`,
     keys
       .map((key) =>
         definitions[key].hidden
           ? null
-          : formatDefinitionInputProperty(meta.name, definitions[key])
+          : formatDefinitionsInputProperty(meta.name, definitions[key])
       )
       .filter(Boolean)
       .join("\n"),
@@ -190,7 +191,7 @@ function formatComponentClassFromDefinitionsAndMetas(
   ];
 }
 
-function formatDefinitionInputProperty(
+function formatDefinitionsInputProperty(
   componentName: string,
   definition: SafePropertyDefinition
 ): string {
@@ -222,13 +223,7 @@ function formatDefinitionInputProperty(
   }
 }
 
-function typeNameForComponentProperty(componentName: string, name: string) {
-  return `${capitalizedNameFromName(componentName)}${capitalizedNameFromName(
-    name
-  )}`;
-}
-
-function variantOptionTypesFromDefinitions(
+function formatDefinitionsVariantOptionTypes(
   componentName: string,
   definitions: SafePropertyDefinitions
 ): string[] {
@@ -244,4 +239,10 @@ function variantOptionTypesFromDefinitions(
     }
   });
   return types;
+}
+
+function typeNameForComponentProperty(componentName: string, name: string) {
+  return `${capitalizedNameFromName(componentName)}${capitalizedNameFromName(
+    name
+  )}`;
 }

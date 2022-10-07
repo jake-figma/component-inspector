@@ -121,7 +121,6 @@ function formatDefinitionsLineForCompositionAPI(
   const componentName = capitalizedNameFromName(metas[key].name);
   const interfaceName = `${componentName}Props`;
   const types: TypeDefinitionsObject = {};
-  const interfaces: InterfaceDefinitionsObject = {};
   const interfaceLines = Object.keys(properties)
     .sort()
     .map((propName) =>
@@ -133,17 +132,14 @@ function formatDefinitionsLineForCompositionAPI(
       )
     )
     .filter(Boolean);
-  interfaces[key] = `interface ${interfaceName} { ${interfaceLines.join(
-    " "
-  )} }`;
   return [
     `/**`,
-    ` * ${componentName}Component.vue setup`,
+    ` * ${componentName}.vue setup`,
     ` */`,
     "",
     ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
     "",
-    ...Object.values(interfaces),
+    `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
     "",
     formatComponentPropsFromDefinitionsAndMetas(key, properties, metas),
     "",
@@ -169,10 +165,12 @@ function formatDefinitionsLineForOptionsAPI(
     )
     .filter(Boolean);
   return [
+    [`/**`, ` * ${componentName} Component`, ` */`].join("\n"),
+    "",
     ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
     "",
     "defineComponent({",
-    `name: "${componentName}Component",`,
+    `name: "${componentName}",`,
     `props: {`,
     propsLines.join("\n"),
     `}`,
@@ -289,9 +287,7 @@ function componentToJsxTypeString(
     )
     .filter(Boolean);
   const n = capitalizedNameFromName(meta.name);
-  return `<${n}Component ${lines.join(" ")} ${
-    slot ? `>${slot}</${n}Component>` : `/>`
-  }`;
+  return `<${n} ${lines.join(" ")} ${slot ? `>\n  ${slot}\n</${n}>` : `/>`}`;
 }
 
 function formatJsxProp(
