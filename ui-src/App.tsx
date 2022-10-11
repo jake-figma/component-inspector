@@ -194,7 +194,6 @@ function App() {
             ) : (
               <h3>{tab}</h3>
             )}
-            &nbsp;
             {result ? (
               <select
                 onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}
