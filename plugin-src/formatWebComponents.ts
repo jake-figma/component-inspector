@@ -1,5 +1,10 @@
 import { Adapter } from "./adapter";
-import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
+import {
+  FormatLanguage,
+  FormatResult,
+  FormatResultItem,
+  FormatSettings,
+} from "../shared";
 import {
   SafeProperty,
   SafePropertyDefinition,
@@ -32,45 +37,42 @@ export function format(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const htmlLines: string[] = [];
-  const tsLines: string[] = [];
+  const code: { language: FormatLanguage; lines: string[] }[] = [];
   Object.entries(definitions).forEach(([key, definition]) => {
     const slotKeysData = slotKeysFromDefinitions(definition, true);
-    htmlLines.push(
-      `<!-- ${capitalizedNameFromName(metas[key].name)} Template -->`,
-      ...formatDefinitionsTemplate(key, metas, slotKeysData),
-      "\n"
-    );
-    tsLines.push(
-      [
-        `/**`,
-        ` * ${capitalizedNameFromName(metas[key].name)} Component`,
-        " */",
-      ].join("\n"),
-      formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
-        "\n"
-      ),
-      ...formatDefinitionsComponentClass(key, definition, metas, slotKeysData)
-    );
+    code.push({
+      language: "html",
+      lines: [
+        `<!-- ${capitalizedNameFromName(metas[key].name)} Template -->`,
+        "\n",
+        ...formatDefinitionsTemplate(key, metas, slotKeysData),
+      ],
+    });
+    code.push({
+      language: "ts",
+      lines: [
+        [
+          `/**`,
+          ` * ${capitalizedNameFromName(metas[key].name)} Component`,
+          " */",
+        ].join("\n"),
+        formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
+          "\n"
+        ),
+        ...formatDefinitionsComponentClass(
+          key,
+          definition,
+          metas,
+          slotKeysData
+        ),
+      ],
+    });
   });
   return {
     label: "Definitions",
-    code: [
-      { language: "html", lines: htmlLines },
-      { language: "ts", lines: tsLines },
-    ],
+    code,
     settings: [],
   };
-}
-
-function slotFormatter(
-  tag: string,
-  key: string,
-  _slotCount: number,
-  _isDefault = false,
-  value: string = ""
-) {
-  return `<${tag} slot="${propertyNameFromKey(key)}">${value}</${tag}>`;
 }
 
 function formatInstances(
@@ -107,6 +109,16 @@ function formatInstances(
     settings,
     settingsKey: "instance",
   };
+}
+
+function slotFormatter(
+  tag: string,
+  key: string,
+  _slotCount: number,
+  _isDefault = false,
+  value: string = ""
+) {
+  return `<${tag} slot="${propertyNameFromKey(key)}">${value}</${tag}>`;
 }
 
 function formatInstancesAttributeFromProperty(

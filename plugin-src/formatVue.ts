@@ -1,13 +1,26 @@
 import { Adapter } from "./adapter";
-import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
+import {
+  FormatLanguage,
+  FormatResult,
+  FormatResultItem,
+  FormatSettings,
+} from "../shared";
 import {
   SafeProperty,
   SafePropertyDefinition,
   SafePropertyDefinitions,
   SafePropertyDefinitionMetaMap,
 } from "./types";
-import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
-import { formatInstancesInstanceFromComponent } from "./formatShared";
+import {
+  capitalizedNameFromName,
+  hyphenatedNameFromName,
+  propertyNameFromKey,
+} from "./utils";
+import {
+  formatInstancesInstanceFromComponent,
+  SlotKeysData,
+  slotKeysFromDefinitions,
+} from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -29,46 +42,46 @@ function formatDefinitions(
 ): FormatResultItem {
   const { definitions, metas } = adapter;
   const [isOptionsApi] = settings.map((a) => Boolean(a[1]));
-  const lines: string[] = [];
+  const code: { language: FormatLanguage; lines: string[] }[] = [];
   if (isOptionsApi) {
-    lines.push("import { defineComponent, type PropType } from 'vue'");
+    code.push({
+      language: "ts",
+      lines: ["import { defineComponent, type PropType } from 'vue'"],
+    });
   }
+
   Object.keys(definitions).forEach((key) => {
     const properties = definitions[key];
-
-    lines.push(
-      isOptionsApi
-        ? formatDefinitionsLineForOptionsAPI(key, properties, metas)
-        : formatDefinitionsLineForCompositionAPI(key, properties, metas)
-    );
+    const slotKeysData = slotKeysFromDefinitions(properties, true);
+    code.push({
+      language: "html",
+      lines: formatDefinitionsTemplate(key, metas, slotKeysData),
+    });
+    code.push({
+      language: "tsx",
+      lines: [
+        isOptionsApi
+          ? formatDefinitionsLineForOptionsAPI(
+              key,
+              properties,
+              metas,
+              slotKeysData
+            )
+          : formatDefinitionsLineForCompositionAPI(
+              key,
+              properties,
+              metas,
+              slotKeysData
+            ),
+      ],
+    });
   });
   return {
     label: "Definitions",
-    code: [
-      {
-        language: "tsx",
-        lines,
-      },
-    ],
+    code,
     settings,
     settingsKey: "vueDefinition",
   };
-}
-
-function slotFormatter(
-  tag: string,
-  key: string,
-  slotCount: number,
-  isDefault = false,
-  value: string = ""
-) {
-  const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
-  if (slotCount > 1 && !isDefault) {
-    return `<template v-slot:${propertyNameFromKey(key)}>
-    ${tagged}
-  </template>`;
-  }
-  return isDefault ? value : tagged;
 }
 
 function formatInstances(
@@ -109,6 +122,22 @@ function formatInstances(
   };
 }
 
+function slotFormatter(
+  tag: string,
+  key: string,
+  slotCount: number,
+  isDefault = false,
+  value: string = ""
+) {
+  const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
+  if (slotCount > 1 && !isDefault) {
+    return `<template v-slot:${propertyNameFromKey(key)}>
+    ${tagged}
+  </template>`;
+  }
+  return isDefault ? value : tagged;
+}
+
 function formatInterfaceProperties(
   interfaceName: string,
   propName: string,
@@ -141,10 +170,33 @@ function formatInterfaceProperties(
   }
 }
 
+// https://vuejs.org/guide/components/slots.html#named-slots
+function formatDefinitionsTemplate(
+  key: string,
+  metas: SafePropertyDefinitionMetaMap,
+  { slotKeys, slotTextKeys, hasOneTextProperty }: SlotKeysData
+) {
+  const meta = metas[key];
+  const template = slotKeys.map((key) =>
+    hasOneTextProperty && key === slotTextKeys[0]
+      ? `    <slot></slot>`
+      : `    <slot name="${propertyNameFromKey(key)}"></slot>`
+  );
+
+  return [
+    `<!-- ${capitalizedNameFromName(meta.name)} Template -->`,
+    "\n",
+    `<div id="${hyphenatedNameFromName(meta.name)}-template">`,
+    ...template,
+    "</div>",
+  ];
+}
+
 function formatDefinitionsLineForCompositionAPI(
   key: string,
   properties: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap
+  metas: SafePropertyDefinitionMetaMap,
+  slotKeysData: SlotKeysData
 ) {
   const componentName = capitalizedNameFromName(metas[key].name);
   const interfaceName = `${componentName}Props`;
@@ -152,12 +204,14 @@ function formatDefinitionsLineForCompositionAPI(
   const interfaceLines = Object.keys(properties)
     .sort()
     .map((propName) =>
-      formatInterfaceProperties(
-        interfaceName,
-        propName,
-        types,
-        properties[propName]
-      )
+      slotKeysData.slotKeys.includes(propName)
+        ? null
+        : formatInterfaceProperties(
+            interfaceName,
+            propName,
+            types,
+            properties[propName]
+          )
     )
     .filter(Boolean);
   return [
@@ -169,7 +223,12 @@ function formatDefinitionsLineForCompositionAPI(
     "",
     `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
     "",
-    formatComponentPropsFromDefinitionsAndMetas(key, properties, metas),
+    formatComponentPropsFromDefinitionsAndMetas(
+      key,
+      properties,
+      metas,
+      slotKeysData
+    ),
     "",
   ].join("\n");
 }
@@ -177,19 +236,22 @@ function formatDefinitionsLineForCompositionAPI(
 function formatDefinitionsLineForOptionsAPI(
   key: string,
   properties: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap
+  metas: SafePropertyDefinitionMetaMap,
+  { slotKeys }: SlotKeysData
 ) {
   const types: TypeDefinitionsObject = {};
   const componentName = capitalizedNameFromName(metas[key].name);
   const propsLines = Object.keys(properties)
     .sort()
     .map((propName) =>
-      formatDefinitionsOptionsProperties(
-        componentName,
-        propName,
-        types,
-        properties[propName]
-      )
+      slotKeys.includes(propName)
+        ? null
+        : formatDefinitionsOptionsProperties(
+            componentName,
+            propName,
+            types,
+            properties[propName]
+          )
     )
     .filter(Boolean);
   return [
@@ -292,14 +354,19 @@ function formatInstancesAttributeFromProperty(
 function formatComponentPropsFromDefinitionsAndMetas(
   key: string,
   definitions: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap
+  metas: SafePropertyDefinitionMetaMap,
+  { slotKeys }: SlotKeysData
 ): string {
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
   const propsName = `${capitalizedNameFromName(meta.name)}Props`;
   return `const props = withDefaults(defineProps<${propsName}>(), {
     ${keys
-      .map((key) => formatDefinitionInputProperty(definitions[key]))
+      .map((key) =>
+        slotKeys.includes(key)
+          ? null
+          : formatDefinitionInputProperty(definitions[key])
+      )
       .filter(Boolean)
       .join("\n")}
   })`;

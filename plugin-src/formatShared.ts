@@ -125,18 +125,19 @@ export function formatInstancesInstanceFromComponent(
   const definitions = adapter.definitions[component.definition];
   const meta = adapter.metas[component.definition];
 
-  const { slotKeys, hasOneTextProperty } = slotKeysFromComponentAndAdapter(
-    component,
-    adapter,
-    options.instanceSlot || false
-  );
+  const { slotKeys, slotTextKeys, hasOneTextProperty } =
+    slotKeysFromComponentAndAdapter(
+      component,
+      adapter,
+      options.instanceSlot || false
+    );
 
   const formatTag = (key: string, tag: string, value: string = "") =>
     slotFormatter(
       tag,
       key,
       slotKeys.length,
-      hasOneTextProperty && key === slotKeys[0],
+      hasOneTextProperty && key === slotTextKeys[0],
       value
     );
 
