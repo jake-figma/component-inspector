@@ -86,10 +86,10 @@ function createSafePropertyDefinition(
   componentPropertyDefinitions: ComponentPropertyDefinitions,
   references: SafePropertyReferencesMap
 ): SafePropertyDefinition {
-  const defs = componentPropertyDefinitions[key];
-  const { type } = defs;
-  const variantOptions = defs.variantOptions || [];
-  const rawValue = `${defs.defaultValue}`;
+  const definition = componentPropertyDefinitions[key];
+  const { type } = definition;
+  const variantOptions = definition.variantOptions || [];
+  const rawValue = `${definition.defaultValue}`;
   const name = propertyNameFromKey(key);
 
   if (type === "VARIANT") {
@@ -153,10 +153,13 @@ function createSafePropertyDefinition(
         hidden,
       };
     case "INSTANCE_SWAP":
+      const instanceOptions: InstanceSwapPreferredValue[] =
+        definition.preferredValues || [];
       return {
         name,
         type,
         defaultValue: rawValue,
+        instanceOptions,
         optional: figma.getNodeById(rawValue)?.name === "undefined",
       };
     case "TEXT":

@@ -49,12 +49,17 @@ interface SafePropertyDefinitionExplicit {
   type: Extract<SafeType, "EXPLICIT">;
   defaultValue: string | number | boolean;
 }
+interface SafePropertyDefinitionInstanceSwap {
+  type: Extract<SafeType, "INSTANCE_SWAP">;
+  defaultValue: string;
+  instanceOptions: InstanceSwapPreferredValue[];
+}
 interface SafePropertyDefinitionNumber {
   type: Extract<SafeType, "NUMBER">;
   defaultValue: number;
 }
-interface SafePropertyDefinitionString {
-  type: Extract<SafeType, "INSTANCE_SWAP" | "TEXT">;
+interface SafePropertyDefinitionText {
+  type: Extract<SafeType, "TEXT">;
   defaultValue: string;
 }
 interface SafePropertyDefinitionVariant {
@@ -91,8 +96,9 @@ export type SafePropertyDefinition = {
 } & (
   | SafePropertyDefinitionBoolean
   | SafePropertyDefinitionExplicit
+  | SafePropertyDefinitionInstanceSwap
   | SafePropertyDefinitionNumber
-  | SafePropertyDefinitionString
+  | SafePropertyDefinitionText
   | SafePropertyDefinitionVariant
 );
 
