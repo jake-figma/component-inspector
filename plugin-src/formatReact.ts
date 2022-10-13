@@ -7,7 +7,11 @@ import {
   SafePropertyDefinitionMetaMap,
 } from "./types";
 import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
-import { formatInstancesInstanceFromComponent } from "./formatShared";
+import {
+  formatInstancesInstanceFromComponent,
+  SlotKeysData,
+  slotKeysFromDefinitions,
+} from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -66,16 +70,12 @@ function formatInstances(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const lines: string[] = [
-    `import {
-    FC,
-    ReactNode,
-  } from "react";`,
-  ];
+  const lines: string[] = [`import { FC, ReactNode, } from "react";`];
   Object.keys(definitions).forEach((key) => {
     const types: TypeDefinitionsObject = {};
     const properties = definitions[key];
     const componentName = capitalizedNameFromName(metas[key].name);
+    const slotKeysData = slotKeysFromDefinitions(properties, true);
     const interfaceName = `${componentName}Props`;
     const interfaceLines = Object.keys(properties)
       .sort()
@@ -84,7 +84,8 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
           interfaceName,
           propName,
           types,
-          properties[propName]
+          properties[propName],
+          slotKeysData
         )
       )
       .filter(Boolean);
@@ -95,7 +96,12 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
           .map((name) => `type ${name} = ${types[name]};`)
           .join("\n"),
         `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
-        formatComponentFunctionFromDefinitionsAndMetas(key, properties, metas),
+        formatComponentFunctionFromDefinitionsAndMetas(
+          key,
+          properties,
+          metas,
+          slotKeysData
+        ),
       ].join("\n\n")
     );
   });
@@ -111,18 +117,24 @@ function formatDefinitionsInterfaceProperties(
   interfaceName: string,
   propName: string,
   types: TypeDefinitionsObject,
-  definition: SafePropertyDefinition
+  definition: SafePropertyDefinition,
+  { slotTextKeys, hasOneTextProperty }: SlotKeysData
 ) {
-  const name = propertyNameFromKey(propName);
-  if (definition.hidden) {
+  if (
+    (hasOneTextProperty && propName === slotTextKeys[0]) ||
+    definition.hidden
+  ) {
     return "";
   }
+  const name = propertyNameFromKey(propName);
   if (definition.type === "BOOLEAN") {
     return `${name}?: boolean;`;
   } else if (definition.type === "NUMBER") {
     return `${name}?: number;`;
   } else if (definition.type === "TEXT") {
-    return `${name}?: string;`;
+    return `${name}?: ${
+      slotTextKeys.includes(propName) ? "ReactNode" : "string"
+    };`;
   } else if (definition.type === "VARIANT") {
     const n = `${interfaceName}${capitalizedNameFromName(propName)}`;
     const value = (definition.variantOptions || [])
@@ -174,31 +186,65 @@ function formatInstancesAttributeFromProperty(
 function formatComponentFunctionFromDefinitionsAndMetas(
   key: string,
   definitions: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap
+  metas: SafePropertyDefinitionMetaMap,
+  slotKeysData: SlotKeysData
 ): string {
+  const { slotTextKeys, hasOneTextProperty } = slotKeysData;
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
   const destructuredProps = `{
     ${keys
-      .map((key) => formatDefinitionInputProperty(definitions[key]))
+      .map((key) =>
+        hasOneTextProperty && slotTextKeys[0] === key
+          ? null
+          : formatDefinitionInputProperty(
+              definitions[key],
+              slotTextKeys.includes(key)
+            )
+      )
       .filter(Boolean)
       .join("\n")}
+    ${hasOneTextProperty ? "children" : ""}
   }`;
   const propsName = `${capitalizedNameFromName(meta.name)}Props`;
+  const children = generateChildren(keys, slotKeysData);
   return `const ${capitalizedNameFromName(
     meta.name
-  )}: FC<${propsName}> = (${destructuredProps}) => (<></>)`;
+  )}: FC<${propsName}> = (${destructuredProps}) => (<>${children}</>)`;
+}
+
+function generateChildren(
+  keys: string[],
+  { slotKeys, slotTextKeys, hasOneTextProperty }: SlotKeysData
+) {
+  const children: string[] = [];
+  keys.forEach((key) => {
+    if (slotTextKeys.includes(key)) {
+      if (hasOneTextProperty) {
+        children.push("children");
+      } else {
+        children.push(propertyNameFromKey(key));
+      }
+    } else if (slotKeys.includes(key)) {
+      children.push(propertyNameFromKey(key));
+    }
+  });
+  return children.map((c) => `{${c}}`).join("\n");
 }
 
 function formatDefinitionInputProperty(
-  definition: SafePropertyDefinition
+  definition: SafePropertyDefinition,
+  hideDefaultValue: boolean
 ): string {
   const { name, type, defaultValue } = definition;
   const clean = propertyNameFromKey(name);
   if (definition.hidden) {
     return "";
   }
-  if (definition.optional && defaultValue === "undefined") {
+  if (
+    (definition.optional && defaultValue === "undefined") ||
+    hideDefaultValue
+  ) {
     return `${clean},`;
   }
   if (type === "BOOLEAN") {

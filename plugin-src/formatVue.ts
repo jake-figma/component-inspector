@@ -186,7 +186,7 @@ function formatDefinitionsTemplate(
   return [
     `<!-- ${capitalizedNameFromName(meta.name)} Template -->`,
     "\n",
-    `<div id="${hyphenatedNameFromName(meta.name)}-template">`,
+    `<div id="template-${hyphenatedNameFromName(meta.name)}">`,
     ...template,
     "</div>",
   ];
