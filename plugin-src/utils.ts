@@ -62,13 +62,3 @@ export function componentNodesFromSceneNodes(
       }
     });
 }
-
-export function nodeChangesIncludesComponents(
-  nodeChanges: NodeChange[] = []
-): Boolean {
-  return Boolean(
-    nodeChanges.find((n) =>
-      ["INSTANCE", "COMPONENT"].includes(figma.getNodeById(n.id)?.type || "")
-    )
-  );
-}
