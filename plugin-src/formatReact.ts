@@ -1,7 +1,6 @@
 import { Adapter } from "./adapter";
 import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
 import {
-  SafeComponent,
   SafeProperty,
   SafePropertyDefinition,
   SafePropertyDefinitions,
@@ -23,24 +22,33 @@ export function format(
   };
 }
 
+function slotFormatter(
+  tag: string,
+  key: string,
+  slotCount: number,
+  isDefault = false,
+  value: string = ""
+) {
+  const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
+  return slotCount === 1 ? value : tagged;
+}
+
 function formatInstances(
   adapter: Adapter,
   settings: FormatSettings = []
 ): FormatResultItem {
   const { components } = adapter;
-  const [showDefaults, explicitBoolean, findText] = settings.map((a) =>
-    Boolean(a[1])
-  );
+  const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
   const lines = Object.values(components).map((component) =>
     formatInstancesInstanceFromComponent(
       component,
       adapter,
       showDefaults,
       explicitBoolean,
-      findText,
       formatInstancesAttributeFromProperty,
       capitalizedNameFromName,
-      { selfClosing: true, slotAttr: "name" }
+      slotFormatter,
+      { selfClosing: true }
     )
   );
   return {
@@ -128,7 +136,8 @@ type TypeDefinitionsObject = { [k: string]: string };
 function formatInstancesAttributeFromProperty(
   property: SafeProperty,
   name: string,
-  explicitBoolean: boolean
+  explicitBoolean: boolean,
+  slotTag?: string
 ) {
   const clean = propertyNameFromKey(name);
   if (property.undefined) {
@@ -147,6 +156,8 @@ function formatInstancesAttributeFromProperty(
     return node
       ? `${clean}={<${capitalizedNameFromName(node.name)} />}`
       : `${clean}="${property.value}"`;
+  } else if (property.type === "TEXT" && slotTag) {
+    return `${clean}={<${slotTag}>${property.value}</${slotTag}>}`;
   } else {
     return `${clean}="${property.value}"`;
   }

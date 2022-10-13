@@ -14,6 +14,7 @@ export function capitalizedNameFromName(name: string) {
 }
 export function hyphenatedNameFromName(name: string) {
   return name
+    .replace(/[ _]+/g, "-")
     .replace(/([A-Z])/g, "-$1")
     .replace(/-+/g, "-")
     .replace(/^-/, "")

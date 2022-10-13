@@ -29,7 +29,6 @@ async function initialize() {
       instance: [
         ["Default", 1],
         ["Boolean", 0],
-        ["Slots", 1],
       ],
       vueDefinition: [[["Composition API", "Option API"], 0]],
       ...initialSettings.options,
@@ -86,8 +85,10 @@ async function initialize() {
     }
   };
 
+  // @ts-ignore
   figma.on("documentchange", ({ documentChanges }) => {
     const relevantChange = documentChanges.find(
+      // @ts-ignore
       (change: DocumentChange) =>
         change.type === "PROPERTY_CHANGE" &&
         ["COMPONENT", "INSTANCE"].includes(change.node.type)

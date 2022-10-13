@@ -1,5 +1,5 @@
 import { Adapter } from "./adapter";
-import { SafeComponent, SafeProperty } from "./types";
+import { SafeComponent, SafeProperty, SafePropertyDefinition } from "./types";
 import { propertyNameFromKey } from "./utils";
 
 export function formatInstancesInstanceFromComponent(
@@ -7,52 +7,96 @@ export function formatInstancesInstanceFromComponent(
   adapter: Adapter,
   showDefaults: boolean,
   explicitBoolean: boolean,
-  findSlot: boolean,
   attributeFormatter: (
     property: SafeProperty,
     name: string,
-    explicitBoolean: boolean
+    explicitBoolean: boolean,
+    slotTag?: string
   ) => string,
   tagNameFormatter: (name: string) => string,
-  options: { selfClosing?: boolean; slotAttr?: string } = {
+  slotFormatter: (
+    tag: string,
+    key: string,
+    slotCount: number,
+    isDefault?: boolean,
+    value?: string
+  ) => string,
+  options: {
+    instanceSlot?: boolean;
+    selfClosing?: boolean;
+  } = {
+    instanceSlot: false,
     selfClosing: false,
   }
 ) {
   const definitions = adapter.definitions[component.definition];
   const meta = adapter.metas[component.definition];
 
-  const textKeySingle = Object.keys(component.properties).find(
+  const isVisibleKey = (key: string) => {
+    const isToggledByBoolean = adapter.references.instances[key]?.visible;
+    if (isToggledByBoolean) {
+      const visible = adapter.references.instances[key]?.visible || "";
+      return component.properties[visible]?.value;
+    } else if (definitions[key].hidden) {
+      return false;
+    }
+    return true;
+  };
+
+  const textKeySingle = Object.keys(component.properties).filter(
     (key) =>
       definitions[key].type === "TEXT" && !component.properties[key].undefined
   );
+  const hasOneTextProperty = textKeySingle.length === 1;
   const textKeysSlots = Object.keys(component.properties).filter(
     (key) =>
-      definitions[key].type === "TEXT" &&
       !component.properties[key].undefined &&
-      definitions[key].defaultValue.toString().match(/^SLOT-/)
+      (slotTagFromTextDefinition(definitions[key]) ||
+        (definitions[key].type === "INSTANCE_SWAP" && isVisibleKey(key)))
   );
-  const textKeys = textKeysSlots.length
+
+  const hasInstanceSlots = textKeysSlots.length && options.instanceSlot;
+  if (hasOneTextProperty && hasInstanceSlots) {
+    textKeysSlots.push(textKeySingle[0]);
+  }
+  const textKeys = hasInstanceSlots
     ? textKeysSlots
-    : textKeySingle
-    ? [textKeySingle]
+    : hasOneTextProperty
+    ? textKeySingle
     : [];
-  const slots = findSlot
-    ? textKeys.reduce<{ [k: string]: string }>((into, key) => {
-        const tagMatch = definitions[key].defaultValue
-          .toString()
-          .match(/^SLOT-([a-z0-9]+)/);
-        const tag = tagMatch ? tagMatch[1] : "";
-        const val = component.properties[key].value;
-        into[key] = tag
-          ? `<${tag}${
-              options.slotAttr
-                ? ` ${options.slotAttr}="${propertyNameFromKey(key)}"`
-                : ""
-            }>${val}</${tag}>`
-          : `${val}`;
-        return into;
-      }, {})
-    : {};
+
+  const formatTag = (key: string, tag: string, value: string = "") =>
+    slotFormatter(
+      tag,
+      key,
+      textKeys.length,
+      hasOneTextProperty && key === textKeySingle[0],
+      value
+    );
+
+  const slots = textKeys.reduce<{ [k: string]: string }>((into, key) => {
+    if (definitions[key].type === "TEXT") {
+      const tagMatch = definitions[key].defaultValue
+        .toString()
+        .match(/^SLOT-?([a-z0-9]+)/);
+      const tag = tagMatch ? tagMatch[1] : "span";
+      into[key] = formatTag(
+        key,
+        tag,
+        component.properties[key].value.toString()
+      );
+    } else if (
+      options.instanceSlot &&
+      definitions[key].type === "INSTANCE_SWAP"
+    ) {
+      const tag = tagNameFormatter(
+        figma.getNodeById(component.properties[key].value.toString())?.name ||
+          ""
+      );
+      into[key] = formatTag(key, tag);
+    }
+    return into;
+  }, {});
 
   const neverDefaultType = (key: string) =>
     definitions[key].type === "INSTANCE_SWAP" ||
@@ -68,27 +112,26 @@ export function formatInstancesInstanceFromComponent(
       notTextChildrenKey(key)
   );
 
-  const isVisibleKey = (key: string) => {
-    const isToggledByBoolean = adapter.references.instances[key]?.visible;
-    if (isToggledByBoolean) {
-      const visible = adapter.references.instances[key]?.visible || "";
-      return component.properties[visible]?.value;
-    } else if (definitions[key].hidden) {
-      return false;
-    }
-    return true;
-  };
-
   const lines = propertyKeys
     .sort()
-    .map((key: string) =>
-      adapter.definitions[component.definition][key].hidden ||
-      !isVisibleKey(key)
-        ? null
-        : attributeFormatter(component.properties[key], key, explicitBoolean)
-    )
+    .map((key: string) => {
+      if (
+        adapter.definitions[component.definition][key].hidden ||
+        !isVisibleKey(key)
+      )
+        return null;
+      const slotTag = slotTagFromTextDefinition(
+        adapter.definitions[component.definition][key]
+      );
+      return attributeFormatter(
+        component.properties[key],
+        key,
+        explicitBoolean,
+        slotTag
+      );
+    })
     .filter(Boolean);
-  const n = tagNameFormatter(meta.name) + "";
+  const n = tagNameFormatter(meta.name);
   const slotValues = Object.values(slots).map((s) => `  ${s}`);
 
   return !options.selfClosing || slotValues.length
@@ -96,4 +139,11 @@ export function formatInstancesInstanceFromComponent(
 ${slotValues.join("\n")}
 </${n}>\n`
     : `<${n} ${lines.join(" ")} />`;
+}
+
+function slotTagFromTextDefinition(definition: SafePropertyDefinition) {
+  const match = definition.defaultValue
+    .toString()
+    .match(/^SLOT-?([a-zA-Z0-9-]+)/);
+  return definition.type === "TEXT" && match ? match[1] || "span" : "";
 }

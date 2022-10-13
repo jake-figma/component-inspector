@@ -1,7 +1,6 @@
 import { Adapter } from "./adapter";
 import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
 import {
-  SafeComponent,
   SafeProperty,
   SafePropertyDefinition,
   SafePropertyDefinitionMetaMap,
@@ -51,13 +50,21 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   };
 }
 
+function slotFormatter(
+  tag: string,
+  key: string,
+  _slotCount: number,
+  _isDefault = false,
+  value: string = ""
+) {
+  return `<${tag} slot="${propertyNameFromKey(key)}">${value}</${tag}>`;
+}
+
 function formatInstances(
   adapter: Adapter,
   settings: FormatSettings
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean, findSlot] = settings.map((a) =>
-    Boolean(a[1])
-  );
+  const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
   const { components } = adapter;
   const lines: string[] = [];
   Object.values(components).forEach((component) =>
@@ -67,10 +74,12 @@ function formatInstances(
         adapter,
         showDefaults,
         explicitBoolean,
-        findSlot,
         formatInstancesAttributeFromProperty,
         hyphenatedNameFromName,
-        { slotAttr: "slot" }
+        slotFormatter,
+        {
+          instanceSlot: true,
+        }
       )
     )
   );

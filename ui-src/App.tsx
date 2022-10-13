@@ -123,7 +123,8 @@ function App() {
           settingsKey: resultItem?.settingsKey,
           settings: overrides.settings || resultItem?.settings,
           tab: overrides.tab || tab,
-          tabIndex: overrides.tabIndex || tabIndex,
+          tabIndex:
+            overrides.tabIndex === undefined ? tabIndex : overrides.tabIndex,
         },
       },
       "*"
@@ -153,7 +154,9 @@ function App() {
         );
       case "vue":
         return renderCode(
-          prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
+          prettier.format(resultItem.lines.join("\n"), {
+            ...prettierOptionsHTML,
+          })
         );
       case "angular":
         return renderCode(
