@@ -44,8 +44,12 @@ function formatDefinitions(
   });
   return {
     label: "Definitions",
-    language: "tsx",
-    lines,
+    code: [
+      {
+        language: "tsx",
+        lines,
+      },
+    ],
     settings,
     settingsKey: "vueDefinition",
   };
@@ -94,8 +98,12 @@ function formatInstances(
   ];
   return {
     label: "Instances",
-    language: "vue",
-    lines,
+    code: [
+      {
+        language: "vue",
+        lines,
+      },
+    ],
     settings,
     settingsKey: "instance",
   };

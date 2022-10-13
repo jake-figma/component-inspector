@@ -4,8 +4,7 @@ import { Adapter } from "./adapter";
 export function format(adapter: Adapter): FormatResult {
   const shared: FormatResultItem = {
     label: "",
-    lines: [],
-    language: "json",
+    code: [],
     settings: [],
   };
   const lines = (object: any) => [JSON.stringify(object, null, 2)];
@@ -15,27 +14,27 @@ export function format(adapter: Adapter): FormatResult {
       {
         ...shared,
         label: "All",
-        lines: lines(adapter),
+        code: [{ language: "json", lines: lines(adapter) }],
       },
       {
         ...shared,
         label: "Definitions",
-        lines: lines(adapter.definitions),
+        code: [{ language: "json", lines: lines(adapter.definitions) }],
       },
       {
         ...shared,
         label: "Components",
-        lines: lines(adapter.components),
+        code: [{ language: "json", lines: lines(adapter.components) }],
       },
       {
         ...shared,
         label: "References",
-        lines: lines(adapter.references),
+        code: [{ language: "json", lines: lines(adapter.references) }],
       },
       {
         ...shared,
         label: "Metas",
-        lines: lines(adapter.metas),
+        code: [{ language: "json", lines: lines(adapter.metas) }],
       },
     ],
   };

@@ -15,8 +15,10 @@ export interface FormatResult {
 }
 export interface FormatResultItem {
   label: string;
-  language: FormatLanguage;
-  lines: string[];
+  code: {
+    language: FormatLanguage;
+    lines: string[];
+  }[];
   settings: FormatSettings;
   settingsKey?: string;
 }

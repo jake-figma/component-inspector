@@ -58,11 +58,15 @@ function App() {
           map[result.label] = {
             label: result.label,
             items: result.items.map((item) => ({
-              language: item.language,
+              code: [
+                ...item.code.map(({ language, lines }) => ({
+                  language,
+                  lines: [...lines],
+                })),
+              ],
               label: item.label,
               settings: [...item.settings],
               settingsKey: item.settingsKey,
-              lines: [...item.lines],
             })),
           };
         });
@@ -133,52 +137,52 @@ function App() {
 
   function renderedResult() {
     if (!resultItem) return null;
-    const lang = resultItem.language;
-    const language =
-      lang === "vue" ? "tsx" : lang === "angular" ? "html" : lang;
+    return resultItem.code.map(({ language, lines }) => {
+      const lang = language;
 
-    const renderCode = (text: string) => (
-      <SyntaxHighlighter
-        customStyle={{ margin: 0 }}
-        language={language}
-        style={theme}
-      >
-        {text}
-      </SyntaxHighlighter>
-    );
+      const renderCode = (text: string) => (
+        <SyntaxHighlighter
+          customStyle={{ margin: 0 }}
+          language={lang === "vue" ? "tsx" : lang === "angular" ? "html" : lang}
+          style={theme}
+        >
+          {text}
+        </SyntaxHighlighter>
+      );
 
-    switch (lang) {
-      case "html":
-        return renderCode(
-          prettier.format(resultItem.lines.join("\n"), prettierOptionsHTML)
-        );
-      case "vue":
-        return renderCode(
-          prettier.format(resultItem.lines.join("\n"), {
-            ...prettierOptionsHTML,
-          })
-        );
-      case "angular":
-        return renderCode(
-          prettier.format(resultItem.lines.join("\n"), {
-            ...prettierOptionsHTML,
-            parser: "angular",
-          })
-        );
-      case "json":
-        return renderCode(resultItem.lines.join("\n"));
-      case "jsx":
-        const jsxString = resultItem.lines
-          .map((line) =>
-            prettier.format(line, prettierOptionsTS).replace(/;\n$/, "")
-          )
-          .join("\n\n");
-        return renderCode(jsxString);
-      case "ts":
-      case "tsx":
-        const tsString = joiner(resultItem.lines);
-        return renderCode(prettier.format(tsString, prettierOptionsTS));
-    }
+      switch (lang) {
+        case "html":
+          return renderCode(
+            prettier.format(lines.join("\n"), prettierOptionsHTML)
+          );
+        case "vue":
+          return renderCode(
+            prettier.format(lines.join("\n"), {
+              ...prettierOptionsHTML,
+            })
+          );
+        case "angular":
+          return renderCode(
+            prettier.format(lines.join("\n"), {
+              ...prettierOptionsHTML,
+              parser: "angular",
+            })
+          );
+        case "json":
+          return renderCode(lines.join("\n"));
+        case "jsx":
+          const jsxString = lines
+            .map((line) =>
+              prettier.format(line, prettierOptionsTS).replace(/;\n$/, "")
+            )
+            .join("\n\n");
+          return renderCode(jsxString);
+        case "ts":
+        case "tsx":
+          const tsString = joiner(lines);
+          return renderCode(prettier.format(tsString, prettierOptionsTS));
+      }
+    });
   }
 
   return (

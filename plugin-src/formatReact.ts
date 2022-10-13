@@ -24,9 +24,9 @@ export function format(
 
 function slotFormatter(
   tag: string,
-  key: string,
+  _key: string,
   slotCount: number,
-  isDefault = false,
+  _isDefault = false,
   value: string = ""
 ) {
   const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
@@ -53,8 +53,12 @@ function formatInstances(
   );
   return {
     label: "Instances",
-    language: "jsx",
-    lines,
+    code: [
+      {
+        language: "jsx",
+        lines,
+      },
+    ],
     settings,
     settingsKey: "instance",
   };
@@ -96,7 +100,11 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
     );
   });
 
-  return { label: "Definitions", language: "tsx", lines, settings: [] };
+  return {
+    label: "Definitions",
+    code: [{ language: "tsx", lines }],
+    settings: [],
+  };
 }
 
 function formatDefinitionsInterfaceProperties(

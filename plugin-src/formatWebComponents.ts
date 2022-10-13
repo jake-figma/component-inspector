@@ -11,7 +11,11 @@ import {
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
-import { formatInstancesInstanceFromComponent } from "./formatShared";
+import {
+  formatInstancesInstanceFromComponent,
+  SlotKeysData,
+  slotKeysFromDefinitions,
+} from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -28,24 +32,33 @@ export function format(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const lines: string[] = [];
+  const htmlLines: string[] = [];
+  const tsLines: string[] = [];
   Object.entries(definitions).forEach(([key, definition]) => {
-    lines.push(
+    const slotKeysData = slotKeysFromDefinitions(definition, true);
+    htmlLines.push(
+      `<!-- ${capitalizedNameFromName(metas[key].name)} Template -->`,
+      ...formatDefinitionsTemplate(key, metas, slotKeysData),
+      "\n"
+    );
+    tsLines.push(
       [
         `/**`,
         ` * ${capitalizedNameFromName(metas[key].name)} Component`,
-        ` */`,
+        " */",
       ].join("\n"),
       formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
         "\n"
       ),
-      ...formatDefinitionsComponentClass(key, definition, metas)
+      ...formatDefinitionsComponentClass(key, definition, metas, slotKeysData)
     );
   });
   return {
     label: "Definitions",
-    language: "ts",
-    lines,
+    code: [
+      { language: "html", lines: htmlLines },
+      { language: "ts", lines: tsLines },
+    ],
     settings: [],
   };
 }
@@ -85,8 +98,12 @@ function formatInstances(
   );
   return {
     label: "Instances",
-    language: "html",
-    lines,
+    code: [
+      {
+        language: "html",
+        lines,
+      },
+    ],
     settings,
     settingsKey: "instance",
   };
@@ -117,30 +134,58 @@ function formatInstancesAttributeFromProperty(
   }
 }
 
+// https://developer.mozilla.org/en-US/docs/Web/Web_Components/Using_templates_and_slots
+function formatDefinitionsTemplate(
+  key: string,
+  metas: SafePropertyDefinitionMetaMap,
+  { slotKeys, slotTextKeys, hasOneTextProperty }: SlotKeysData
+): string[] {
+  const meta = metas[key];
+  const hyphenatedName = hyphenatedNameFromName(meta.name);
+  const templateContent = slotKeys.map((key) =>
+    hasOneTextProperty && key === slotTextKeys[0]
+      ? `  <slot></slot>`
+      : `  <slot name="${propertyNameFromKey(key)}"></slot>`
+  );
+  return [
+    `<template id="template-${hyphenatedName}">${templateContent.join(
+      "\n"
+    )}</template>`,
+  ];
+}
+
 function formatDefinitionsComponentClass(
   key: string,
   definitions: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap
+  metas: SafePropertyDefinitionMetaMap,
+  { slotKeys }: SlotKeysData
 ): string[] {
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
+  const capitalizedName = capitalizedNameFromName(meta.name);
+  const hyphenatedName = hyphenatedNameFromName(meta.name);
   return [
-    `class ${capitalizedNameFromName(meta.name)} extends HTMLElement {`,
+    `class ${capitalizedName} extends HTMLElement {`,
     keys
       .map((key) =>
-        definitions[key].hidden
+        definitions[key].hidden || slotKeys.includes(key)
           ? null
           : formatDefinitionsInputProperty(meta.name, definitions[key])
       )
       .filter(Boolean)
       .join("\n"),
+    `constructor() {`,
+    `super();`,
+    `this.attachShadow({ mode: "open" }).appendChild(document.getElementById("template-${hyphenatedName}").content.cloneNode(true));`,
+    "}",
     `public static get observedAttributes(): string[] {
       return [${keys
-        .filter((key) => !definitions[key].hidden)
+        .filter((key) => !definitions[key].hidden && !slotKeys.includes(key))
         .map((key) => `'${propertyNameFromKey(key)}'`)
         .join(", ")}];
-    }`,
+      }`,
     "}",
+    `customElements.define("${hyphenatedName}", ${capitalizedName});`,
   ];
 }
 

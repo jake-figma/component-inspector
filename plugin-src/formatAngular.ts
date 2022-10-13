@@ -11,7 +11,10 @@ import {
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
-import { formatInstancesInstanceFromComponent } from "./formatShared";
+import {
+  formatInstancesInstanceFromComponent,
+  slotKeysFromDefinitions,
+} from "./formatShared";
 
 export function format(
   adapter: Adapter,
@@ -44,8 +47,12 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   });
   return {
     label: "Definitions",
-    language: "ts",
-    lines,
+    code: [
+      {
+        language: "ts",
+        lines,
+      },
+    ],
     settings: [],
   };
 }
@@ -86,8 +93,12 @@ function formatInstances(
   );
   return {
     label: "Instances",
-    language: "angular",
-    lines,
+    code: [
+      {
+        language: "angular",
+        lines,
+      },
+    ],
     settings,
     settingsKey: "instance",
   };
@@ -118,6 +129,7 @@ function formatInstancesAttributeFromProperty(
   }
 }
 
+// https://angular.io/guide/content-projection#multi-slot
 function formatDefinitionsComponentClass(
   key: string,
   definitions: SafePropertyDefinitions,
@@ -125,12 +137,24 @@ function formatDefinitionsComponentClass(
 ): string[] {
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
+  const { slotKeys, slotTextKeys, hasOneTextProperty } =
+    slotKeysFromDefinitions(definitions, true);
+  const template = slotKeys.map((key) =>
+    hasOneTextProperty && key === slotTextKeys[0]
+      ? `    <ng-content></ng-content>`
+      : `    <ng-content select="[${propertyNameFromKey(key)}]"></ng-content>`
+  );
   return [
-    `@Component({ selector: '${hyphenatedNameFromName(meta.name)}' })`,
+    `@Component({ selector: '${hyphenatedNameFromName(meta.name)}'${
+      template.length
+        ? `, template: \`\n${template.join("\n")}
+  \``
+        : ""
+    } })`,
     `class ${capitalizedNameFromName(meta.name)} {`,
     keys
       .map((key) =>
-        definitions[key].hidden
+        definitions[key].hidden || slotKeys.includes(key)
           ? null
           : formatDefinitionsInputProperty(meta.name, definitions[key])
       )
