@@ -30,8 +30,10 @@ This is just the beginning! Would love to hear from you about what works and wha
 Currently, this plugin supports tag-named slots. Add the `--SLOT[tagname]` suffix to the name of a text component property in Figma and it will generate a slot for that attribute. For example, if you create a component with a text property named `"heading--SLOT[h2]"`, it would generate the following React instance and definition code:
 
 ```tsx
-<MyComponent heading={<h2>My slot content</h2>} />;
+<MyComponent heading={<h2>My slot content</h2>} />
+```
 
+```tsx
 const MyComponent: FC<{ heading: ReactNode }> = ({ heading }) => <>{heading}</>;
 ```
 
