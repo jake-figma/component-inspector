@@ -25,6 +25,8 @@ This is just the beginning! Would love to hear from you about what works and wha
 
 ## Conventions / Pro Tips
 
+### Slots
+
 Currently, this plugin supports tag-named slots. Add the `--SLOT[tagname]` suffix to the name of a text component property in Figma and it will generate a slot for that attribute. For example, if you create a component with a text property named `"heading--SLOT[h2]"`, it would generate the following React instance and definition code:
 
 ```tsx
@@ -32,3 +34,17 @@ Currently, this plugin supports tag-named slots. Add the `--SLOT[tagname]` suffi
 
 const MyComponent: FC<{ heading: ReactNode }> = ({ heading }) => <>{heading}</>;
 ```
+
+### Boolean visibility
+
+If you have a boolean Figma component property that controls visibility of a text or instance swap property, that boolean property will be ignored in generated code and the text or instance swap property will disappear when the boolean is false.
+
+### `"undefined"` variant options and instance swaps
+
+If you have a variant option property that defaults to the string `"undefined"`, that property will be treated as truly optional (no default).
+
+If you have an instance swap property that defaults to a component named `"undefined"`, that property will be treated as truly optional (no default).
+
+### Numeric variant options
+
+If your variant options are all numeric, the generated code will treat it like a number type property.
