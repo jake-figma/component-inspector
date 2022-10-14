@@ -317,7 +317,12 @@ function setSafePropertyReferencesMap(
   node: RelevantComponentNode,
   allReferences: SafePropertyReferencesMap
 ) {
-  const referenceNode = node.type === "COMPONENT" ? node : node.mainComponent;
+  const referenceNode =
+    node.type === "COMPONENT"
+      ? node
+      : node.type === "INSTANCE"
+      ? node.mainComponent
+      : node;
   const recurse = (nodes: readonly SceneNode[] = []) => {
     nodes.forEach((node) => {
       if (node.componentPropertyReferences) {

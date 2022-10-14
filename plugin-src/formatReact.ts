@@ -3,7 +3,7 @@ import {
   FormatLanguage,
   FormatResult,
   FormatResultItem,
-  FormatSettings,
+  FormatSettingsOptions,
 } from "../shared";
 import {
   SafeProperty,
@@ -24,7 +24,7 @@ import {
 
 export function format(
   adapter: Adapter,
-  instanceSettings?: FormatSettings
+  instanceSettings?: FormatSettingsOptions
 ): FormatResult {
   return {
     label: "React",
@@ -48,7 +48,7 @@ function slotFormatter(
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettings = []
+  settings: FormatSettingsOptions = []
 ): FormatResultItem {
   const { components } = adapter;
   const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));

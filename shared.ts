@@ -1,4 +1,10 @@
-export type FormatSettings = [string | [string, string], 0 | 1][];
+export type FormatSettingsOptions = [string | [string, string], 0 | 1][];
+export type FormatSettings = {
+  version: string;
+  options: { [k: string]: FormatSettingsOptions };
+  tab?: string;
+  tabIndex?: number;
+};
 
 export type FormatLanguage =
   | "angular"
@@ -19,6 +25,6 @@ export interface FormatResultItem {
     language: FormatLanguage;
     lines: string[];
   }[];
-  settings: FormatSettings;
+  settings: FormatSettingsOptions;
   settingsKey?: string;
 }

@@ -5,7 +5,7 @@ import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
-import { FormatResult, FormatSettings } from "../shared";
+import { FormatResult, FormatSettings, FormatSettingsOptions } from "../shared";
 
 initialize();
 
@@ -17,47 +17,67 @@ async function initialize() {
     themeColors: true,
   });
 
-  const initialSettings = (await figma.clientStorage.getAsync("settings")) || {
-    options: {},
-  };
-  const settings: {
-    tab?: string;
-    tabIndex?: number;
-    options: { [k: string]: FormatSettings };
-  } = {
+  const settingsFromStorage: FormatSettings =
+    await figma.clientStorage.getAsync("settings");
+
+  const settingsVersion = "1";
+
+  const initialSettings =
+    settingsFromStorage && settingsFromStorage.version === settingsVersion
+      ? settingsFromStorage
+      : {
+          version: settingsVersion,
+          options: {},
+        };
+  const settings: FormatSettings = {
+    version: settingsVersion,
     options: {
       instance: [
         ["Default", 1],
         ["Boolean", 0],
       ],
-      vueDefinition: [[["Composition API", "Option API"], 0]],
+      definitionVue: [[["Composition API", "Option API"], 0]],
       ...initialSettings.options,
     },
   };
 
   const nodes: SceneNode[] = [];
 
+  type FigmaCommand = "all" | "angular" | "react" | "vue" | "web" | "json";
+  const commands: FigmaCommand[] = [
+    "all",
+    "angular",
+    "react",
+    "vue",
+    "web",
+    "json",
+  ];
+
+  function isFigmaCommand(
+    string: string | FigmaCommand
+  ): string is FigmaCommand {
+    return commands.includes(string as FigmaCommand);
+  }
+
+  function isFormatResult(
+    result: false | FormatResult
+  ): result is FormatResult {
+    return result !== false;
+  }
+
   function process() {
     const relevantNodes = componentNodesFromSceneNodes(nodes);
-    const processed = adapter(relevantNodes);
-    const results: FormatResult[] = [];
-    const { command } = figma;
-    if (command === "all" || command === "angular")
-      results.push(formatAngular(processed, settings.options.instance));
-    if (command === "all" || command === "react")
-      results.push(formatReact(processed, settings.options.instance));
-    if (command === "all" || command === "vue")
-      results.push(
-        formatVue(
-          processed,
-          settings.options.vueDefinition,
-          settings.options.instance
-        )
-      );
-    if (command === "all" || command === "web")
-      results.push(formatWebComponents(processed, settings.options.instance));
-    if (command === "all" || command === "json")
-      results.push(formatJSON(processed));
+    const result = adapter(relevantNodes);
+    const cmd = isFigmaCommand(figma.command) ? figma.command : "all";
+    const all = cmd === "all";
+    const { instance, definitionVue } = settings.options;
+    const results = [
+      (all || cmd === "angular") && formatAngular(result, instance),
+      (all || cmd === "react") && formatReact(result, instance),
+      (all || cmd === "vue") && formatVue(result, definitionVue, instance),
+      (all || cmd === "web") && formatWebComponents(result, instance),
+      (all || cmd === "json") && formatJSON(result),
+    ].filter(isFormatResult);
 
     figma.ui.postMessage({
       type: "RESULT",
@@ -91,7 +111,7 @@ async function initialize() {
       // @ts-ignore
       (change: DocumentChange) =>
         change.type === "PROPERTY_CHANGE" &&
-        ["COMPONENT", "INSTANCE"].includes(change.node.type)
+        ["COMPONENT", "INSTANCE", "COMPONENT_SET"].includes(change.node.type)
     );
     if (relevantChange) run();
   });

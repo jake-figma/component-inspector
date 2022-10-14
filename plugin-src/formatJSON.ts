@@ -1,4 +1,8 @@
-import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
+import {
+  FormatResult,
+  FormatResultItem,
+  FormatSettingsOptions,
+} from "../shared";
 import { Adapter } from "./adapter";
 
 export function format(adapter: Adapter): FormatResult {

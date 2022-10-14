@@ -24,7 +24,11 @@ export function hyphenatedNameFromName(name: string) {
 }
 
 export function propertyNameFromKey(name: string) {
-  return downcase(capitalizedNameFromName(name).replace(/\d/g, ""));
+  return downcase(
+    capitalizedNameFromName(
+      name.replace(/#[^#]+$/g, "").replace(/--SLOT.+$/g, "")
+    ).replace(/^\d+/g, "")
+  );
 }
 
 export function asBoolean(string: string) {
@@ -43,7 +47,10 @@ export function isNumber(string: string) {
   return Boolean(string.match(/^\d*\.?\d+$/));
 }
 
-export type RelevantComponentNode = InstanceNode | ComponentNode;
+export type RelevantComponentNode =
+  | InstanceNode
+  | ComponentNode
+  | ComponentSetNode;
 
 // Filtering nodes to instances and components that are not variant comonents
 export function componentNodesFromSceneNodes(
@@ -53,12 +60,15 @@ export function componentNodesFromSceneNodes(
     .filter(
       (n) =>
         n.type === "INSTANCE" ||
+        n.type === "COMPONENT_SET" ||
         (n.type === "COMPONENT" && n.parent?.type !== "COMPONENT_SET")
     )
     .map((n) => {
       switch (n.type) {
         case "INSTANCE":
           return n as InstanceNode;
+        case "COMPONENT_SET":
+          return n as ComponentSetNode;
         case "COMPONENT":
         default:
           return n as ComponentNode;
@@ -70,18 +80,40 @@ export function componentJsCommentFromMeta(
   meta: SafePropertyDefinitionMeta,
   extra = ""
 ): string {
-  let documentation = [meta.description, ...meta.documentationLinks]
+  let documentation = [
+    ...splitString(meta.description || "", 50).map((s, i) =>
+      i === 0 ? s : `  ${s}`
+    ),
+    ...meta.documentationLinks,
+  ]
     .filter(Boolean)
     .map((a) => ` * ${a}`)
     .join("\n");
   const componentName = capitalizedNameFromName(meta.name);
   return [
     `/**`,
-    " * ",
     ` * ${componentName} Component${extra}${
-      documentation ? `\n * \n${documentation}` : ""
+      documentation ? `\n${documentation}` : ""
     }`,
-    " * ",
     ` */`,
   ].join("\n");
+}
+
+function splitString(string: string, maxLength: number): string[] {
+  const arr = string?.split(" ");
+  const result = [];
+  let subString = arr[0];
+  for (let i = 1; i < arr.length; i++) {
+    const word = arr[i];
+    if (subString.length + word.length + 1 <= maxLength) {
+      subString = subString + " " + word;
+    } else {
+      result.push(subString);
+      subString = word;
+    }
+  }
+  if (subString.length) {
+    result.push(subString);
+  }
+  return result;
 }

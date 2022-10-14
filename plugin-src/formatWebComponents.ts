@@ -3,7 +3,7 @@ import {
   FormatLanguage,
   FormatResult,
   FormatResultItem,
-  FormatSettings,
+  FormatSettingsOptions,
 } from "../shared";
 import {
   SafeProperty,
@@ -25,7 +25,7 @@ import {
 
 export function format(
   adapter: Adapter,
-  instanceSettings: FormatSettings
+  instanceSettings: FormatSettingsOptions
 ): FormatResult {
   return {
     label: "Web Components",
@@ -74,7 +74,7 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettings
+  settings: FormatSettingsOptions
 ): FormatResultItem {
   const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
   const { components } = adapter;

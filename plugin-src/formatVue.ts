@@ -3,7 +3,7 @@ import {
   FormatLanguage,
   FormatResult,
   FormatResultItem,
-  FormatSettings,
+  FormatSettingsOptions,
 } from "../shared";
 import {
   SafeProperty,
@@ -25,8 +25,8 @@ import {
 
 export function format(
   adapter: Adapter,
-  definitionSettings?: FormatSettings,
-  instanceSettings?: FormatSettings
+  definitionSettings?: FormatSettingsOptions,
+  instanceSettings?: FormatSettingsOptions
 ): FormatResult {
   return {
     label: "Vue",
@@ -39,7 +39,7 @@ export function format(
 
 function formatDefinitions(
   adapter: Adapter,
-  settings: FormatSettings = []
+  settings: FormatSettingsOptions = []
 ): FormatResultItem {
   const { definitions, metas } = adapter;
   const [isOptionsApi] = settings.map((a) => Boolean(a[1]));
@@ -86,13 +86,13 @@ function formatDefinitions(
     label: "Definitions",
     code,
     settings,
-    settingsKey: "vueDefinition",
+    settingsKey: "definitionVue",
   };
 }
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettings = []
+  settings: FormatSettingsOptions = []
 ): FormatResultItem {
   const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
   const { components } = adapter;

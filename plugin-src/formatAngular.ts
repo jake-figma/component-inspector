@@ -3,7 +3,7 @@ import {
   FormatLanguage,
   FormatResult,
   FormatResultItem,
-  FormatSettings,
+  FormatSettingsOptions,
 } from "../shared";
 import {
   SafeProperty,
@@ -24,7 +24,7 @@ import {
 
 export function format(
   adapter: Adapter,
-  instanceSettings: FormatSettings
+  instanceSettings: FormatSettingsOptions
 ): FormatResult {
   return {
     label: "Angular",
@@ -70,7 +70,7 @@ function slotFormatter(
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettings
+  settings: FormatSettingsOptions
 ): FormatResultItem {
   const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
   const { components } = adapter;
@@ -149,7 +149,7 @@ function formatDefinitionsComponentClass(
     template.length > 1
       ? `const template${capitalizedName} = [${template
           .map((a) => `\`${a}\``)
-          .join(",")}].join("\\n");\n\n`
+          .join(",")}].join("");\n\n`
       : template.length
       ? `const template${capitalizedName} = \`${template[0]}\`;\n\n`
       : "";

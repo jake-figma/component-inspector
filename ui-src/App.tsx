@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { FormatResult, FormatSettings } from "../shared";
+import { FormatResult, FormatSettingsOptions } from "../shared";
 import {
   tomorrow as themeDark,
   base16AteliersulphurpoolLight as themeLight,
@@ -115,7 +115,7 @@ function App() {
 
   function sendSettings(
     overrides: {
-      settings?: FormatSettings;
+      settings?: FormatSettingsOptions;
       tab?: string;
       tabIndex?: number;
     } = {}

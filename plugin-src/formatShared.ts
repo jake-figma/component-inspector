@@ -35,7 +35,7 @@ export function slotKeysFromDefinitions(
   const hasOneTextProperty = slotTextKeys.length === 1;
   const instanceAndTextSlotKeys = Object.keys(definitions).filter(
     (key) =>
-      slotTagFromTextDefinition(definitions[key]) ||
+      (definitions[key].type === "TEXT" && slotTagFromKey(key)) ||
       (definitions[key].type === "INSTANCE_SWAP" && !definitions[key].hidden)
   );
 
@@ -64,15 +64,17 @@ function slotKeysFromComponentAndAdapter(
   enableInstanceSlots: boolean
 ): SlotKeysData {
   const definitions = adapter.definitions[component.definition];
-  const slotTextKeys = Object.keys(component.properties).filter(
-    (key) =>
-      definitions[key].type === "TEXT" && !component.properties[key].undefined
+  const allTextKeys = Object.keys(component.properties).filter(
+    (key) => definitions[key].type === "TEXT"
   );
-  const hasOneTextProperty = slotTextKeys.length === 1;
+  const slotTextKeys = allTextKeys.filter(
+    (key) => !component.properties[key].undefined
+  );
+  const hasOneTextProperty = allTextKeys.length === 1;
   const instanceAndTextSlotKeys = Object.keys(component.properties).filter(
     (key) =>
       !component.properties[key].undefined &&
-      (slotTagFromTextDefinition(definitions[key]) ||
+      ((definitions[key].type === "TEXT" && slotTagFromKey(key)) ||
         (definitions[key].type === "INSTANCE_SWAP" &&
           isVisibleKey(key, component, adapter)))
   );
@@ -143,10 +145,7 @@ export function formatInstancesInstanceFromComponent(
 
   const slots = slotKeys.reduce<{ [k: string]: string }>((into, key) => {
     if (definitions[key].type === "TEXT") {
-      const tagMatch = definitions[key].defaultValue
-        .toString()
-        .match(/^SLOT-?([a-z0-9]+)/);
-      const tag = tagMatch ? tagMatch[1] : "span";
+      const tag = slotTagFromKey(key) || "span";
       into[key] = formatTag(
         key,
         tag,
@@ -187,9 +186,7 @@ export function formatInstancesInstanceFromComponent(
         !isVisibleKey(key, component, adapter)
       )
         return null;
-      const slotTag = slotTagFromTextDefinition(
-        adapter.definitions[component.definition][key]
-      );
+      const slotTag = slotTagFromKey(key);
       return attributeFormatter(
         component.properties[key],
         key,
@@ -208,9 +205,7 @@ ${slotValues.join("\n")}
     : `<${n} ${lines.join(" ")} />`;
 }
 
-function slotTagFromTextDefinition(definition: SafePropertyDefinition) {
-  const match = definition.defaultValue
-    .toString()
-    .match(/^SLOT-?([a-zA-Z0-9-]+)/);
-  return definition.type === "TEXT" && match ? match[1] || "span" : "";
+function slotTagFromKey(key: string) {
+  const match = key.match(/--SLOT(\[([a-zA-Z0-9-]+)\])?/);
+  return match ? match[2] || "span" : "";
 }
