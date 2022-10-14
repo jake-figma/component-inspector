@@ -16,6 +16,7 @@ import {
   componentJsCommentFromMeta,
   hyphenatedNameFromName,
   propertyNameFromKey,
+  slotTagFromKey,
 } from "./utils";
 import {
   formatInstancesInstanceFromComponent,
@@ -141,7 +142,7 @@ function formatDefinitionsComponentClass(
     slotKeysFromDefinitions(definitions, true);
   const capitalizedName = capitalizedNameFromName(meta.name);
   const template = slotKeys.map((key) =>
-    hasOneTextProperty && key === slotTextKeys[0]
+    hasOneTextProperty && key === slotTextKeys[0] && !slotTagFromKey(key)
       ? `<ng-content></ng-content>`
       : `<ng-content select="[${propertyNameFromKey(key)}]"></ng-content>`
   );

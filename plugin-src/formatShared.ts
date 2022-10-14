@@ -1,10 +1,6 @@
 import { Adapter } from "./adapter";
-import {
-  SafeComponent,
-  SafeProperty,
-  SafePropertyDefinition,
-  SafePropertyDefinitions,
-} from "./types";
+import { SafeComponent, SafeProperty, SafePropertyDefinitions } from "./types";
+import { slotTagFromKey } from "./utils";
 
 export interface SlotKeysData {
   slotKeys: string[];
@@ -42,7 +38,11 @@ export function slotKeysFromDefinitions(
   const hasInstanceSlots = Boolean(
     instanceAndTextSlotKeys.length && enableInstanceSlots
   );
-  if (hasOneTextProperty && hasInstanceSlots) {
+  if (
+    hasOneTextProperty &&
+    hasInstanceSlots &&
+    !instanceAndTextSlotKeys.includes(slotTextKeys[0])
+  ) {
     instanceAndTextSlotKeys.push(slotTextKeys[0]);
   }
 
@@ -139,7 +139,7 @@ export function formatInstancesInstanceFromComponent(
       tag,
       key,
       slotKeys.length,
-      hasOneTextProperty && key === slotTextKeys[0],
+      hasOneTextProperty && key === slotTextKeys[0] && !slotTagFromKey(key),
       value
     );
 
@@ -203,9 +203,4 @@ export function formatInstancesInstanceFromComponent(
 ${slotValues.join("\n")}
 </${n}>\n`
     : `<${n} ${lines.join(" ")} />`;
-}
-
-function slotTagFromKey(key: string) {
-  const match = key.match(/--SLOT(\[([a-zA-Z0-9-]+)\])?/);
-  return match ? match[2] || "span" : "";
 }

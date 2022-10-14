@@ -232,7 +232,7 @@ function createSafeProperty(
       };
     case "TEXT":
       const charNodeId = Object.keys(
-        references.properties[key].characterNodes || {}
+        references.properties[key]?.characterNodes || {}
       )[0];
       return {
         name,

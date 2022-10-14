@@ -99,6 +99,11 @@ export function componentJsCommentFromMeta(
   ].join("\n");
 }
 
+export function slotTagFromKey(key: string) {
+  const match = key.match(/--SLOT(\[([a-zA-Z0-9-]+)\])?/);
+  return match ? match[2] || "span" : "";
+}
+
 function splitString(string: string, maxLength: number): string[] {
   const arr = string?.split(" ");
   const result = [];

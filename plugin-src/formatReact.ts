@@ -39,11 +39,11 @@ function slotFormatter(
   tag: string,
   _key: string,
   slotCount: number,
-  _isDefault = false,
+  isDefault = false,
   value: string = ""
 ) {
   const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
-  return slotCount === 1 ? value : tagged;
+  return slotCount === 1 && isDefault ? value : tagged;
 }
 
 function formatInstances(
