@@ -44,16 +44,19 @@ function formatDefinitions(
   const { definitions, metas } = adapter;
   const [isOptionsApi] = settings.map((a) => Boolean(a[1]));
   const code: { language: FormatLanguage; lines: string[] }[] = [];
-  if (isOptionsApi) {
-    code.push({
-      language: "ts",
-      lines: ["import { defineComponent, type PropType } from 'vue'"],
-    });
-  } else {
-    code.push({
-      language: "ts",
-      lines: ["import { defineProps, withDefaults } from 'vue'"],
-    });
+  const hasDefinitions = Object.keys(definitions).length;
+  if (hasDefinitions) {
+    if (isOptionsApi) {
+      code.push({
+        language: "ts",
+        lines: ["import { defineComponent, type PropType } from 'vue'"],
+      });
+    } else {
+      code.push({
+        language: "ts",
+        lines: ["import { defineProps, withDefaults } from 'vue'"],
+      });
+    }
   }
 
   Object.keys(definitions).forEach((key) => {

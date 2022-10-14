@@ -79,9 +79,10 @@ function formatInstances(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const code: { language: FormatLanguage; lines: string[] }[] = [
-    { language: "ts", lines: [`import { FC, ReactNode, } from "react";`] },
-  ];
+  const hasDefinitions = Object.keys(definitions).length;
+  const code: { language: FormatLanguage; lines: string[] }[] = hasDefinitions
+    ? [{ language: "ts", lines: [`import { FC, ReactNode, } from "react";`] }]
+    : [];
   Object.keys(definitions).forEach((key) => {
     const types: TypeDefinitionsObject = {};
     const properties = definitions[key];

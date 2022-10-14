@@ -5,7 +5,7 @@ import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
-import { FormatResult, FormatSettings, FormatSettingsOptions } from "../shared";
+import { FormatResult, FormatSettings } from "../shared";
 
 initialize();
 

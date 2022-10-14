@@ -6,7 +6,6 @@
   "permissions": [],
   "main": "dist/code.js",
   "ui": "dist/index.html",
-  "enableProposedApi": true,
   "menu": [
     { "command": "all", "name": "All" },
     { "separator": true },
