@@ -1,3 +1,5 @@
+![](ComponentInspectorBanner.png)
+
 # Component Inspector
 
 A [Figma plugin](https://www.figma.com/community/plugin/1162860898904210114) for inspecting Figma components.
