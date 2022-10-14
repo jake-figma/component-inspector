@@ -35,6 +35,10 @@ Currently, this plugin supports tag-named slots. Add the `--SLOT[tagname]` suffi
 const MyComponent: FC<{ heading: ReactNode }> = ({ heading }) => <>{heading}</>;
 ```
 
+The tagname will default to `span` if you use the suffix `--SLOT` without a tagname.
+
+If your Figma component has a single text property, it will be treated as a generic slot.
+
 ### Boolean visibility
 
 If you have a boolean Figma component property that controls visibility of a text or instance swap property, that boolean property will be ignored in generated code and the text or instance swap property will disappear when the boolean is false.
