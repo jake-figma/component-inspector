@@ -11,13 +11,13 @@ import parserHTMLCustom from "./parser-html-custom";
 import "./App.css";
 
 const prettierOptionsTS = {
-  printWidth: 50,
+  printWidth: 60,
   parser: "babel-ts",
   plugins: [parserBabel],
   semi: true,
 };
 const prettierOptionsHTML = {
-  printWidth: 50,
+  printWidth: 60,
   parser: "html",
   plugins: [parserHTMLCustom],
   htmlWhitespaceSensitivity: "ignore",

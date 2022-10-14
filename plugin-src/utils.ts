@@ -1,3 +1,5 @@
+import { SafePropertyDefinitionMeta } from "./types";
+
 export function capitalize(name: string) {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
 }
@@ -62,4 +64,24 @@ export function componentNodesFromSceneNodes(
           return n as ComponentNode;
       }
     });
+}
+
+export function componentJsCommentFromMeta(
+  meta: SafePropertyDefinitionMeta,
+  extra = ""
+): string {
+  let documentation = [meta.description, ...meta.documentationLinks]
+    .filter(Boolean)
+    .map((a) => ` * ${a}`)
+    .join("\n");
+  const componentName = capitalizedNameFromName(meta.name);
+  return [
+    `/**`,
+    " * ",
+    ` * ${componentName} Component${extra}${
+      documentation ? `\n * \n${documentation}` : ""
+    }`,
+    " * ",
+    ` */`,
+  ].join("\n");
 }

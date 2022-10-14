@@ -13,8 +13,15 @@ export type SafePropertyReferencesMap = {
   };
 };
 
+export type SafePropertyDefinitionMeta = {
+  name: string;
+  id: string;
+  description?: string;
+  documentationLinks: string[];
+};
+
 export type SafePropertyDefinitionMetaMap = {
-  [k: string]: { name: string; id: string };
+  [k: string]: SafePropertyDefinitionMeta;
 };
 
 export type SafeComponentMap = {

@@ -13,6 +13,7 @@ import {
 } from "./types";
 import {
   capitalizedNameFromName,
+  componentJsCommentFromMeta,
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
@@ -48,15 +49,16 @@ function formatDefinitions(
       language: "ts",
       lines: ["import { defineComponent, type PropType } from 'vue'"],
     });
+  } else {
+    code.push({
+      language: "ts",
+      lines: ["import { defineProps, withDefaults } from 'vue'"],
+    });
   }
 
   Object.keys(definitions).forEach((key) => {
     const properties = definitions[key];
     const slotKeysData = slotKeysFromDefinitions(properties, true);
-    code.push({
-      language: "html",
-      lines: formatDefinitionsTemplate(key, metas, slotKeysData),
-    });
     code.push({
       language: "tsx",
       lines: [
@@ -74,6 +76,10 @@ function formatDefinitions(
               slotKeysData
             ),
       ],
+    });
+    code.push({
+      language: "html",
+      lines: formatDefinitionsTemplate(key, metas, slotKeysData),
     });
   });
   return {
@@ -215,9 +221,7 @@ function formatDefinitionsLineForCompositionAPI(
     )
     .filter(Boolean);
   return [
-    `/**`,
-    ` * ${componentName}.vue setup`,
-    ` */`,
+    componentJsCommentFromMeta(metas[key], " .vue setup"),
     "",
     ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
     "",
@@ -254,16 +258,21 @@ function formatDefinitionsLineForOptionsAPI(
           )
     )
     .filter(Boolean);
+  const propsDefinition = [
+    `const props${componentName} = {`,
+    propsLines.join("\n"),
+    `}`,
+  ];
   return [
-    [`/**`, ` * ${componentName} Component`, ` */`].join("\n"),
+    componentJsCommentFromMeta(metas[key]),
     "",
     ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
     "",
+    propsDefinition.join("\n"),
+    "",
     "defineComponent({",
     `name: "${componentName}",`,
-    `props: {`,
-    propsLines.join("\n"),
-    `}`,
+    `props: props${componentName}`,
     `})`,
   ].join("\n");
 }
@@ -360,7 +369,7 @@ function formatComponentPropsFromDefinitionsAndMetas(
   const meta = metas[key];
   const keys = Object.keys(definitions).sort();
   const propsName = `${capitalizedNameFromName(meta.name)}Props`;
-  return `const props = withDefaults(defineProps<${propsName}>(), {
+  return `withDefaults(defineProps<${propsName}>(), {
     ${keys
       .map((key) =>
         slotKeys.includes(key)

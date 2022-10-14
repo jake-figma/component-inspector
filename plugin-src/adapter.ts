@@ -68,7 +68,16 @@ function processNodeInToSafeComponent(
   allDefinitions[definition] =
     allDefinitions[definition] ||
     getSafePropertyDefinitions(componentPropertyDefinitions, allReferences);
-  allMetas[definition] = { name, id: definition };
+  const atFigma = `@figma component:${definitionNode?.key}`;
+  const documentationLinks =
+    definitionNode?.documentationLinks?.map(({ uri }) => uri) || [];
+  documentationLinks.push(atFigma);
+  allMetas[definition] = {
+    name,
+    id: definition,
+    description: definitionNode?.description,
+    documentationLinks,
+  };
   return {
     id: node.id,
     name,

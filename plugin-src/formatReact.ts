@@ -1,12 +1,21 @@
 import { Adapter } from "./adapter";
-import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
+import {
+  FormatLanguage,
+  FormatResult,
+  FormatResultItem,
+  FormatSettings,
+} from "../shared";
 import {
   SafeProperty,
   SafePropertyDefinition,
   SafePropertyDefinitions,
   SafePropertyDefinitionMetaMap,
 } from "./types";
-import { capitalizedNameFromName, propertyNameFromKey } from "./utils";
+import {
+  capitalizedNameFromName,
+  componentJsCommentFromMeta,
+  propertyNameFromKey,
+} from "./utils";
 import {
   formatInstancesInstanceFromComponent,
   SlotKeysData,
@@ -70,7 +79,9 @@ function formatInstances(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const lines: string[] = [`import { FC, ReactNode, } from "react";`];
+  const code: { language: FormatLanguage; lines: string[] }[] = [
+    { language: "ts", lines: [`import { FC, ReactNode, } from "react";`] },
+  ];
   Object.keys(definitions).forEach((key) => {
     const types: TypeDefinitionsObject = {};
     const properties = definitions[key];
@@ -89,26 +100,30 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
         )
       )
       .filter(Boolean);
-    lines.push(
-      [
-        [`/**`, ` * ${componentName} Component`, ` */`].join("\n"),
-        Object.keys(types)
-          .map((name) => `type ${name} = ${types[name]};`)
-          .join("\n"),
-        `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
-        formatComponentFunctionFromDefinitionsAndMetas(
-          key,
-          properties,
-          metas,
-          slotKeysData
-        ),
-      ].join("\n\n")
-    );
+
+    code.push({
+      language: "tsx",
+      lines: [
+        [
+          componentJsCommentFromMeta(metas[key]),
+          Object.keys(types)
+            .map((name) => `type ${name} = ${types[name]};`)
+            .join("\n"),
+          `interface ${interfaceName} { ${interfaceLines.join(" ")} }`,
+          formatComponentFunctionFromDefinitionsAndMetas(
+            key,
+            properties,
+            metas,
+            slotKeysData
+          ),
+        ].join("\n\n"),
+      ],
+    });
   });
 
   return {
     label: "Definitions",
-    code: [{ language: "tsx", lines }],
+    code,
     settings: [],
   };
 }

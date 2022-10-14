@@ -1,5 +1,10 @@
 import { Adapter } from "./adapter";
-import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
+import {
+  FormatLanguage,
+  FormatResult,
+  FormatResultItem,
+  FormatSettings,
+} from "../shared";
 import {
   SafeProperty,
   SafePropertyDefinition,
@@ -8,6 +13,7 @@ import {
 } from "./types";
 import {
   capitalizedNameFromName,
+  componentJsCommentFromMeta,
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
@@ -31,28 +37,22 @@ export function format(
 
 function formatDefinitions(adapter: Adapter): FormatResultItem {
   const { definitions, metas } = adapter;
-  const lines: string[] = [];
+  const code: { language: FormatLanguage; lines: string[] }[] = [];
   Object.entries(definitions).forEach(([key, definition]) => {
-    lines.push(
-      [
-        `/**`,
-        ` * ${capitalizedNameFromName(metas[key].name)} Component`,
-        ` */`,
-      ].join("\n"),
-      formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
-        "\n"
-      ),
-      ...formatDefinitionsComponentClass(key, definition, metas)
-    );
+    code.push({
+      language: "ts",
+      lines: [
+        componentJsCommentFromMeta(metas[key]),
+        formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
+          "\n"
+        ),
+        ...formatDefinitionsComponentClass(key, definition, metas),
+      ],
+    });
   });
   return {
     label: "Definitions",
-    code: [
-      {
-        language: "ts",
-        lines,
-      },
-    ],
+    code,
     settings: [],
   };
 }
@@ -139,19 +139,27 @@ function formatDefinitionsComponentClass(
   const keys = Object.keys(definitions).sort();
   const { slotKeys, slotTextKeys, hasOneTextProperty } =
     slotKeysFromDefinitions(definitions, true);
+  const capitalizedName = capitalizedNameFromName(meta.name);
   const template = slotKeys.map((key) =>
     hasOneTextProperty && key === slotTextKeys[0]
-      ? `    <ng-content></ng-content>`
-      : `    <ng-content select="[${propertyNameFromKey(key)}]"></ng-content>`
+      ? `<ng-content></ng-content>`
+      : `<ng-content select="[${propertyNameFromKey(key)}]"></ng-content>`
   );
+  const templateDefinition =
+    template.length > 1
+      ? `const template${capitalizedName} = [${template
+          .map((a) => `\`${a}\``)
+          .join(",")}].join("\\n");\n\n`
+      : template.length
+      ? `const template${capitalizedName} = \`${template[0]}\`;\n\n`
+      : "";
   return [
-    `@Component({ selector: '${hyphenatedNameFromName(meta.name)}'${
-      template.length
-        ? `, template: \`\n${template.join("\n")}
-  \``
-        : ""
+    `${templateDefinition}@Component({ selector: '${hyphenatedNameFromName(
+      meta.name
+    )}'${
+      templateDefinition ? `, template: template${capitalizedName}` : ""
     } })`,
-    `class ${capitalizedNameFromName(meta.name)} {`,
+    `class ${capitalizedName} {`,
     keys
       .map((key) =>
         definitions[key].hidden || slotKeys.includes(key)

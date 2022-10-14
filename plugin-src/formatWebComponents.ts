@@ -13,6 +13,7 @@ import {
 } from "./types";
 import {
   capitalizedNameFromName,
+  componentJsCommentFromMeta,
   hyphenatedNameFromName,
   propertyNameFromKey,
 } from "./utils";
@@ -41,21 +42,9 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   Object.entries(definitions).forEach(([key, definition]) => {
     const slotKeysData = slotKeysFromDefinitions(definition, true);
     code.push({
-      language: "html",
-      lines: [
-        `<!-- ${capitalizedNameFromName(metas[key].name)} Template -->`,
-        "\n",
-        ...formatDefinitionsTemplate(key, metas, slotKeysData),
-      ],
-    });
-    code.push({
       language: "ts",
       lines: [
-        [
-          `/**`,
-          ` * ${capitalizedNameFromName(metas[key].name)} Component`,
-          " */",
-        ].join("\n"),
+        componentJsCommentFromMeta(metas[key]),
         formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
           "\n"
         ),
@@ -65,6 +54,14 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
           metas,
           slotKeysData
         ),
+      ],
+    });
+    code.push({
+      language: "html",
+      lines: [
+        `<!-- ${capitalizedNameFromName(metas[key].name)} Template -->`,
+        "\n",
+        ...formatDefinitionsTemplate(key, metas, slotKeysData),
       ],
     });
   });
