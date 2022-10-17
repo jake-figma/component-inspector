@@ -82,7 +82,7 @@ function slotKeysFromComponentAndAdapter(
   const hasInstanceSlots = Boolean(
     instanceAndTextSlotKeys.length && enableInstanceSlots
   );
-  if (hasOneTextProperty && hasInstanceSlots) {
+  if (hasOneTextProperty && hasInstanceSlots && slotTextKeys[0]) {
     instanceAndTextSlotKeys.push(slotTextKeys[0]);
   }
   return {
