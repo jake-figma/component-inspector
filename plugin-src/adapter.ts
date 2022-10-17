@@ -323,14 +323,19 @@ function setSafePropertyReferencesMap(
       : node.type === "INSTANCE"
       ? node.mainComponent
       : node;
-  const recurse = (nodes: readonly SceneNode[] = []) => {
+  const recurse = (nodes: readonly SceneNode[] = [], ancestorVisible = "") => {
     nodes.forEach((node) => {
       if (node.componentPropertyReferences) {
         const { characters, visible, mainComponent } =
           node.componentPropertyReferences;
         if (mainComponent) {
+          // nested instances
+          const visibleValue =
+            !visible && !characters && ancestorVisible
+              ? ancestorVisible
+              : visible;
           allReferences.instances[mainComponent] = {
-            visible,
+            visible: visibleValue,
             characters,
           };
         }
@@ -343,27 +348,45 @@ function setSafePropertyReferencesMap(
               [node.id]: true,
             };
             allReferences.characterNodes[node.id] = characters;
-          }
-          if (visible) {
-            allReferences.visibleNodes[node.id] = visible;
-            allReferences.properties[visible] =
-              allReferences.properties[visible] || {};
-            if (mainComponent) {
-              allReferences.properties[visible].visibleProperties = {
-                ...allReferences.properties[visible].visibleProperties,
-                [mainComponent]: true,
-              };
-            } else {
-              allReferences.properties[visible].visibleNodes = {
-                ...allReferences.properties[visible].visibleNodes,
+            if (!visible && ancestorVisible) {
+              // nested text node
+              allReferences.visibleNodes[node.id] = ancestorVisible;
+              allReferences.properties[ancestorVisible].visibleNodes = {
+                ...allReferences.properties[ancestorVisible].visibleNodes,
                 [node.id]: true,
               };
             }
           }
+          if (visible) {
+            ancestorVisible = visible;
+            allReferences.properties[visible] =
+              allReferences.properties[visible] || {};
+            if (node.type === "INSTANCE" || node.type === "TEXT") {
+              allReferences.visibleNodes[node.id] = visible;
+              if (mainComponent) {
+                allReferences.properties[visible].visibleProperties = {
+                  ...allReferences.properties[visible].visibleProperties,
+                  [mainComponent]: true,
+                };
+              } else {
+                allReferences.properties[visible].visibleNodes = {
+                  ...allReferences.properties[visible].visibleNodes,
+                  [node.id]: true,
+                };
+              }
+            }
+          }
+        } else if (ancestorVisible && node.type === "INSTANCE") {
+          // handling nested instance
+          allReferences.visibleNodes[node.id] = ancestorVisible;
+          allReferences.properties[ancestorVisible].visibleProperties = {
+            ...allReferences.properties[ancestorVisible].visibleProperties,
+            [mainComponent]: true,
+          };
         }
       }
       if ("children" in node) {
-        recurse(node.children);
+        recurse(node.children, ancestorVisible);
       }
     });
   };
