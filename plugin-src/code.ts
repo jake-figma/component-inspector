@@ -105,17 +105,15 @@ async function initialize() {
     }
   };
 
-  // @ts-ignore
+  figma.on("selectionchange", run);
+  run();
+
   figma.on("documentchange", ({ documentChanges }) => {
     const relevantChange = documentChanges.find(
-      // @ts-ignore
       (change: DocumentChange) =>
         change.type === "PROPERTY_CHANGE" &&
         ["COMPONENT", "INSTANCE", "COMPONENT_SET"].includes(change.node.type)
     );
     if (relevantChange) run();
   });
-
-  figma.on("selectionchange", run);
-  run();
 }
