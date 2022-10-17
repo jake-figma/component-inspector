@@ -4,11 +4,7 @@
 
 A [Figma plugin](https://www.figma.com/community/plugin/1162860898904210114) for inspecting Figma components.
 
-Components and Component Properties are incredibly powerful features in Figma.
-
-This plugin allows developers to inspect those properties in a mental model similar to the way they describe components.
-
-This plugin does _not_ generate style code. It generates code for the language of components and the description of properties.
+This plugin allows developers to look at Figma component properties in the same way they describe components in code. This plugin does _not_ generate style code. It generates code for the language of components and the description of properties.
 
 Currently supporting instance and component code generation for:
 

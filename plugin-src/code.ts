@@ -12,8 +12,8 @@ initialize();
 async function initialize() {
   figma.showUI(__html__, {
     visible: true,
-    width: 550,
-    height: 900,
+    width: 500,
+    height: 700,
     themeColors: true,
   });
 
