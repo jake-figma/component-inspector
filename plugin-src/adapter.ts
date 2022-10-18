@@ -172,6 +172,17 @@ function createSafePropertyDefinition(
         optional: figma.getNodeById(rawValue)?.name === "undefined",
       };
     case "TEXT":
+      return isNumber(rawValue)
+        ? {
+            name,
+            type: "NUMBER",
+            defaultValue: asNumber(rawValue),
+          }
+        : {
+            name,
+            type,
+            defaultValue: rawValue,
+          };
     default:
       return {
         name,
@@ -325,6 +336,7 @@ function setSafePropertyReferencesMap(
       : node;
   const recurse = (nodes: readonly SceneNode[] = [], ancestorVisible = "") => {
     nodes.forEach((node) => {
+      let localAncestorVisible = ancestorVisible;
       if (node.componentPropertyReferences) {
         const { characters, visible, mainComponent } =
           node.componentPropertyReferences;
@@ -358,7 +370,7 @@ function setSafePropertyReferencesMap(
             }
           }
           if (visible) {
-            ancestorVisible = visible;
+            localAncestorVisible = visible;
             allReferences.properties[visible] =
               allReferences.properties[visible] || {};
             if (node.type === "INSTANCE" || node.type === "TEXT") {
@@ -386,7 +398,7 @@ function setSafePropertyReferencesMap(
         }
       }
       if ("children" in node) {
-        recurse(node.children, ancestorVisible);
+        recurse(node.children, localAncestorVisible);
       }
     });
   };
