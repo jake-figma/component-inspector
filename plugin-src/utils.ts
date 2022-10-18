@@ -8,13 +8,22 @@ export function downcase(name: string) {
   return `${name.charAt(0).toLowerCase()}${name.slice(1)}`;
 }
 
+function numericGuard(name: string) {
+  if (name.charAt(0).match(/\d/)) {
+    name = `N${name}`;
+  }
+  return name;
+}
+
 export function capitalizedNameFromName(name: string) {
+  name = numericGuard(name);
   return name
     .split(/[^a-zA-Z\d]+/g)
     .map(capitalize)
     .join("");
 }
 export function hyphenatedNameFromName(name: string) {
+  name = numericGuard(name);
   return name
     .replace(/[^a-zA-Z\d-_]/g, "")
     .replace(/[ _]+/g, "-")
