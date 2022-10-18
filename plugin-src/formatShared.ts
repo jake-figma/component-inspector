@@ -167,11 +167,12 @@ export function formatInstancesInstanceFromComponent(
     return into;
   }, {});
 
-  const isNotDefaultValue = (key: string) => !component.properties[key].default;
   const notTextChildrenKey = (key: string) => !slotKeys.length || !slots[key];
 
   const propertyKeys = Object.keys(component.properties).filter(
-    (key) => (showDefaults || isNotDefaultValue(key)) && notTextChildrenKey(key)
+    (key) =>
+      (showDefaults || !component.properties[key].default) &&
+      notTextChildrenKey(key)
   );
 
   const lines = propertyKeys
