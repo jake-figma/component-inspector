@@ -144,6 +144,9 @@ export function formatInstancesInstanceFromComponent(
     );
 
   const slots = slotKeys.reduce<{ [k: string]: string }>((into, key) => {
+    if (!showDefaults && component.properties[key].default) {
+      return into;
+    }
     if (definitions[key].type === "TEXT") {
       const tag = slotTagFromKey(key) || "span";
       into[key] = formatTag(
@@ -164,18 +167,11 @@ export function formatInstancesInstanceFromComponent(
     return into;
   }, {});
 
-  const neverDefaultType = (key: string) =>
-    definitions[key].type === "INSTANCE_SWAP" ||
-    definitions[key].type === "TEXT" ||
-    definitions[key].type === "NUMBER";
-  const isNotDefaultValue = (key: string) =>
-    definitions[key].defaultValue !== component.properties[key].value;
+  const isNotDefaultValue = (key: string) => !component.properties[key].default;
   const notTextChildrenKey = (key: string) => !slotKeys.length || !slots[key];
 
   const propertyKeys = Object.keys(component.properties).filter(
-    (key) =>
-      (showDefaults || neverDefaultType(key) || isNotDefaultValue(key)) &&
-      notTextChildrenKey(key)
+    (key) => (showDefaults || isNotDefaultValue(key)) && notTextChildrenKey(key)
   );
 
   const lines = propertyKeys
