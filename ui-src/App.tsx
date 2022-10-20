@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { FormatLanguage, FormatResult, FormatSettingsOptions } from "../shared";
+import {
+  FormatLanguage,
+  FormatResult,
+  FormatSettings,
+  FormatSettingsOptions,
+  PluginMessage,
+  PluginMessageType,
+} from "../shared";
 import {
   tomorrow as themeDark,
   base16AteliersulphurpoolLight as themeLight,
@@ -30,6 +37,8 @@ const detectLightMode = () =>
   document.documentElement.classList.contains("figma-light");
 
 function App() {
+  const [mode, setMode] = useState<PluginMessageType>("RESULT");
+  const [settings, setSettings] = useState<FormatSettings>();
   const [resultsMap, setResultsMap] = useState<{
     [k: string]: FormatResult;
   }>({});
@@ -43,14 +52,7 @@ function App() {
     window.onmessage = ({
       data: { pluginMessage },
     }: {
-      data: {
-        pluginMessage: {
-          type: "RESULT";
-          results: FormatResult[];
-          tab?: string;
-          tabIndex?: number;
-        };
-      };
+      data: { pluginMessage: PluginMessage };
     }) => {
       if (pluginMessage.type === "RESULT") {
         const map = { ...resultsMap };
@@ -72,12 +74,16 @@ function App() {
         });
         setResultsMap(map);
         if (!tab) {
+          const { settings } = pluginMessage;
           const initialTab =
-            pluginMessage.tab && pluginMessage.tab in map
-              ? pluginMessage.tab
+            settings.tab && settings.tab in map
+              ? settings.tab
               : Object.values(map)[0]?.label || "";
-          handleTabChange(initialTab, pluginMessage.tabIndex);
+          handleTabChange(initialTab, settings.tabIndex);
         }
+      } else if (pluginMessage.type === "CONFIG") {
+        setMode("CONFIG");
+        setSettings(pluginMessage.settings);
       }
     };
 
@@ -101,19 +107,19 @@ function App() {
     } else if (!Boolean(resultsMap[s]?.items[tabIndex])) {
       handleTabIndexChange(0, s);
     } else {
-      sendSettings({ tab: s });
+      sendOptions({ tab: s });
     }
   }
 
   function handleTabIndexChange(i: number, t?: string) {
     setTabIndex(i);
-    sendSettings({ tab: t || tab, tabIndex: i });
+    sendOptions({ tab: t || tab, tabIndex: i });
   }
 
   const result = tab ? resultsMap[tab] : null;
   const resultItem = result ? result?.items[tabIndex] : null;
 
-  function sendSettings(
+  function sendOptions(
     overrides: {
       options?: FormatSettingsOptions;
       tab?: string;
@@ -121,7 +127,7 @@ function App() {
     } = {}
   ) {
     const pluginMessage = {
-      type: "SETTINGS",
+      type: "OPTIONS",
       optionsKey: resultItem?.optionsKey,
       options: overrides.options || resultItem?.options,
       tab: overrides.tab || tab,
@@ -131,8 +137,18 @@ function App() {
     parent.postMessage({ pluginMessage }, "*");
   }
 
+  function updateSettings(settings: FormatSettings) {
+    setSettings(settings);
+    const pluginMessage = {
+      type: "SETTINGS",
+      settings,
+    };
+    parent.postMessage({ pluginMessage }, "*");
+  }
+
   function renderedResult() {
     if (!resultItem) return null;
+
     return resultItem.code.map(({ language, lines }) => {
       const lang: FormatLanguage = language;
 
@@ -181,57 +197,138 @@ function App() {
     });
   }
 
-  return (
-    <>
-      <header>
-        {tab ? (
-          <div>
-            {Object.keys(resultsMap).length > 1 ? (
-              <select onChange={(e) => handleTabChange(e.target.value)}>
-                {Object.values(resultsMap).map(({ label }) => (
-                  <option key={label} selected={tab === label}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+  function renderResults() {
+    return (
+      <>
+        <header>
+          {tab ? (
+            <div>
+              {Object.keys(resultsMap).length > 1 ? (
+                <select onChange={(e) => handleTabChange(e.target.value)}>
+                  {Object.values(resultsMap).map(({ label }) => (
+                    <option key={label} selected={tab === label}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <h3>{tab}</h3>
+              )}
+              {result ? (
+                <select
+                  onChange={(e) =>
+                    handleTabIndexChange(parseInt(e.target.value))
+                  }
+                >
+                  {result.items.map(({ label }, i) => (
+                    <option key={label} selected={tabIndex === i} value={i}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+          ) : null}
+          {resultItem ? (
+            <div>
+              {resultItem.options.map(([label, value], i) => (
+                <button
+                  className={
+                    value || Array.isArray(label) ? "brand small" : "small"
+                  }
+                  onClick={() => {
+                    const updated = [...resultItem.options];
+                    updated[i][1] = value ? 0 : 1;
+                    sendOptions({ options: updated });
+                  }}
+                >
+                  {Array.isArray(label) ? label[value] : label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </header>
+        <main>{renderedResult()}</main>
+      </>
+    );
+  }
+
+  function renderConfig() {
+    return settings ? (
+      <main>
+        <div>
+          <h2>Ignored Property Prefix</h2>
+          <p>
+            If present, properties with this prefix will be ignored from code
+            generation.
+          </p>
+          <input
+            type="text"
+            value={settings.prefixIgnore}
+            onInput={(e) =>
+              updateSettings({
+                ...settings,
+                prefixIgnore: e.currentTarget.value.trim(),
+              })
+            }
+            placeholder="Your prefix here"
+          />
+        </div>
+        <div>
+          <h2>Text Property Slot Suffix</h2>
+          <p>
+            If present, text properties named with this suffix will be treated
+            as a <code>&lt;span&gt;</code> slot. Appending{" "}
+            <code>[tagname]</code> to this suffix in the text property name will
+            control which html tag is used, eg{" "}
+            <code>{settings.suffixSlot || "YOUR-SUFFIX"}[h1]</code>.
+          </p>
+          <input
+            type="text"
+            value={settings.suffixSlot}
+            onInput={(e) =>
+              updateSettings({
+                ...settings,
+                suffixSlot: e.currentTarget.value.trim(),
+              })
+            }
+            placeholder="Your slot suffix here"
+          />
+        </div>
+        <div>
+          <h2>Optional Variant and Instance Default Name</h2>
+          <p>
+            If present, variant properties with a default of{" "}
+            {settings.valueOptional ? (
+              <code>"{settings.valueOptional}"</code>
             ) : (
-              <h3>{tab}</h3>
-            )}
-            {result ? (
-              <select
-                onChange={(e) => handleTabIndexChange(parseInt(e.target.value))}
-              >
-                {result.items.map(({ label }, i) => (
-                  <option key={label} selected={tabIndex === i} value={i}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-          </div>
-        ) : null}
-        {resultItem ? (
-          <div>
-            {resultItem.options.map(([label, value], i) => (
-              <button
-                className={
-                  value || Array.isArray(label) ? "brand small" : "small"
-                }
-                onClick={() => {
-                  const updated = [...resultItem.options];
-                  updated[i][1] = value ? 0 : 1;
-                  sendSettings({ options: updated });
-                }}
-              >
-                {Array.isArray(label) ? label[value] : label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </header>
-      <main>{renderedResult()}</main>
-    </>
-  );
+              "this value"
+            )}{" "}
+            and instance swap properties with a default instance named{" "}
+            {settings.valueOptional ? (
+              <code>"{settings.valueOptional}"</code>
+            ) : (
+              "this value"
+            )}{" "}
+            will be treated as optional.
+          </p>
+          <input
+            type="text"
+            value={settings.valueOptional}
+            onInput={(e) =>
+              updateSettings({
+                ...settings,
+                valueOptional: e.currentTarget.value.trim(),
+              })
+            }
+            placeholder="Optional value"
+          />
+        </div>
+      </main>
+    ) : null;
+  }
+
+  return mode === "RESULT" ? renderResults() : renderConfig();
 }
 
 export default App;

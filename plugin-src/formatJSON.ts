@@ -1,7 +1,10 @@
-import { FormatResult, FormatResultItem } from "../shared";
+import { FormatResult, FormatResultItem, FormatSettings } from "../shared";
 import { Adapter } from "./adapter";
 
-export function format(adapter: Adapter): FormatResult {
+export function format(
+  adapter: Adapter,
+  _settings: FormatSettings
+): FormatResult {
   const shared: FormatResultItem = {
     label: "",
     code: [],

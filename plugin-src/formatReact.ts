@@ -3,7 +3,7 @@ import {
   FormatLanguage,
   FormatResult,
   FormatResultItem,
-  FormatSettingsOptions,
+  FormatSettings,
 } from "../shared";
 import {
   SafeProperty,
@@ -12,46 +12,34 @@ import {
   SafePropertyDefinitionMetaMap,
 } from "./types";
 import {
-  capitalizedNameFromName,
-  componentJsCommentFromMeta,
-  propertyNameFromKey,
-} from "./utils";
-import {
   formatInstancesInstanceFromComponent,
   SlotKeysData,
   slotKeysFromDefinitions,
 } from "./formatShared";
 
+type TypeDefinitionsObject = { [k: string]: string };
+
 export function format(
   adapter: Adapter,
-  instanceSettings?: FormatSettingsOptions
+  settings: FormatSettings
 ): FormatResult {
   return {
     label: "React",
     items: [
-      formatInstances(adapter, instanceSettings),
-      formatDefinitions(adapter),
+      formatInstances(adapter, settings),
+      formatDefinitions(adapter, settings),
     ],
   };
 }
 
-function slotFormatter(
-  tag: string,
-  _key: string,
-  slotCount: number,
-  isDefault = false,
-  value: string = ""
-) {
-  const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
-  return slotCount === 1 && isDefault ? value : tagged;
-}
-
 function formatInstances(
   adapter: Adapter,
-  options: FormatSettingsOptions = []
+  settings: FormatSettings
 ): FormatResultItem {
   const { components } = adapter;
-  const [showDefaults, explicitBoolean] = options.map((a) => Boolean(a[1]));
+  const [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
+    Boolean(a[1])
+  );
   const lines = Object.values(components).map((component) =>
     formatInstancesInstanceFromComponent(
       component,
@@ -59,7 +47,7 @@ function formatInstances(
       showDefaults,
       explicitBoolean,
       formatInstancesAttributeFromProperty,
-      capitalizedNameFromName,
+      adapter.formatters.capitalizedNameFromName,
       slotFormatter,
       { selfClosing: true }
     )
@@ -72,12 +60,58 @@ function formatInstances(
         lines,
       },
     ],
-    options,
+    options: settings.options.instance,
     optionsKey: "instance",
   };
+
+  function slotFormatter(
+    tag: string,
+    _key: string,
+    slotCount: number,
+    isDefault = false,
+    value: string = ""
+  ) {
+    const tagged = value ? `<${tag}>${value}</${tag}>` : `<${tag} />`;
+    return slotCount === 1 && isDefault ? value : tagged;
+  }
+
+  function formatInstancesAttributeFromProperty(
+    property: SafeProperty,
+    name: string,
+    explicitBoolean: boolean,
+    slotTag?: string
+  ) {
+    const clean = adapter.formatters.propertyNameFromKey(name);
+    if (property.undefined) {
+      return "";
+    }
+    if (property.type === "BOOLEAN") {
+      return explicitBoolean
+        ? `${clean}={${property.value}}`
+        : property.value
+        ? clean
+        : "";
+    } else if (property.type === "NUMBER") {
+      return `${clean}={${property.value}}`;
+    } else if (property.type === "INSTANCE_SWAP") {
+      const node = figma.getNodeById(property.value);
+      return node
+        ? `${clean}={<${adapter.formatters.capitalizedNameFromName(
+            node.name
+          )} />}`
+        : `${clean}="${property.value}"`;
+    } else if (property.type === "TEXT" && slotTag) {
+      return `${clean}={<${slotTag}>${property.value}</${slotTag}>}`;
+    } else {
+      return `${clean}="${property.value}"`;
+    }
+  }
 }
 
-function formatDefinitions(adapter: Adapter): FormatResultItem {
+function formatDefinitions(
+  adapter: Adapter,
+  settings: FormatSettings
+): FormatResultItem {
   const { definitions, metas } = adapter;
   const hasDefinitions = Object.keys(definitions).length;
   const code: { language: FormatLanguage; lines: string[] }[] = hasDefinitions
@@ -86,8 +120,10 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   Object.keys(definitions).forEach((key) => {
     const types: TypeDefinitionsObject = {};
     const properties = definitions[key];
-    const componentName = capitalizedNameFromName(metas[key].name);
-    const slotKeysData = slotKeysFromDefinitions(properties, true);
+    const componentName = adapter.formatters.capitalizedNameFromName(
+      metas[key].name
+    );
+    const slotKeysData = slotKeysFromDefinitions(adapter, properties, true);
     const interfaceName = `${componentName}Props`;
     const interfaceLines = Object.keys(properties)
       .sort()
@@ -106,7 +142,7 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
       language: "tsx",
       lines: [
         [
-          componentJsCommentFromMeta(metas[key]),
+          adapter.formatters.componentJsCommentFromMeta(metas[key]),
           Object.keys(types)
             .map((name) => `type ${name} = ${types[name]};`)
             .join("\n"),
@@ -127,157 +163,131 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
     code,
     options: [],
   };
-}
 
-function formatDefinitionsInterfaceProperties(
-  interfaceName: string,
-  propName: string,
-  types: TypeDefinitionsObject,
-  definition: SafePropertyDefinition,
-  { slotTextKeys, hasOneTextProperty }: SlotKeysData
-) {
-  if (
-    (hasOneTextProperty && propName === slotTextKeys[0]) ||
-    definition.hidden
+  function formatDefinitionsInterfaceProperties(
+    interfaceName: string,
+    propName: string,
+    types: TypeDefinitionsObject,
+    definition: SafePropertyDefinition,
+    { slotTextKeys, hasOneTextProperty }: SlotKeysData
   ) {
-    return "";
-  }
-  const name = propertyNameFromKey(propName);
-  if (definition.type === "BOOLEAN") {
-    return `${name}?: boolean;`;
-  } else if (definition.type === "NUMBER") {
-    return `${name}?: number;`;
-  } else if (definition.type === "TEXT") {
-    return `${name}?: ${
-      slotTextKeys.includes(propName) ? "ReactNode" : "string"
-    };`;
-  } else if (definition.type === "VARIANT") {
-    const n = `${interfaceName}${capitalizedNameFromName(propName)}`;
-    const value = (definition.variantOptions || [])
-      .map((o) => `'${o}'`)
-      .join(" | ");
-    types[n] = value;
-    return `${name}?: ${n};`;
-  } else if (definition.type === "EXPLICIT") {
-    return `${name}?: "${definition.defaultValue}";`;
-  } else if (definition.type === "INSTANCE_SWAP") {
-    return `${name}?: ReactNode;`;
-  } else {
-    return `${name}?: ${JSON.stringify(definition)};`;
-  }
-}
-
-type TypeDefinitionsObject = { [k: string]: string };
-
-function formatInstancesAttributeFromProperty(
-  property: SafeProperty,
-  name: string,
-  explicitBoolean: boolean,
-  slotTag?: string
-) {
-  const clean = propertyNameFromKey(name);
-  if (property.undefined) {
-    return "";
-  }
-  if (property.type === "BOOLEAN") {
-    return explicitBoolean
-      ? `${clean}={${property.value}}`
-      : property.value
-      ? clean
-      : "";
-  } else if (property.type === "NUMBER") {
-    return `${clean}={${property.value}}`;
-  } else if (property.type === "INSTANCE_SWAP") {
-    const node = figma.getNodeById(property.value);
-    return node
-      ? `${clean}={<${capitalizedNameFromName(node.name)} />}`
-      : `${clean}="${property.value}"`;
-  } else if (property.type === "TEXT" && slotTag) {
-    return `${clean}={<${slotTag}>${property.value}</${slotTag}>}`;
-  } else {
-    return `${clean}="${property.value}"`;
-  }
-}
-
-function formatComponentFunctionFromDefinitionsAndMetas(
-  key: string,
-  definitions: SafePropertyDefinitions,
-  metas: SafePropertyDefinitionMetaMap,
-  slotKeysData: SlotKeysData
-): string {
-  const { slotTextKeys, hasOneTextProperty } = slotKeysData;
-  const meta = metas[key];
-  const keys = Object.keys(definitions).sort();
-  const destructuredProps = `{
-    ${keys
-      .map((key) =>
-        hasOneTextProperty && slotTextKeys[0] === key
-          ? null
-          : formatDefinitionInputProperty(
-              definitions[key],
-              slotTextKeys.includes(key)
-            )
-      )
-      .filter(Boolean)
-      .join("\n")}
-    ${hasOneTextProperty ? "children" : ""}
-  }`;
-  const propsName = `${capitalizedNameFromName(meta.name)}Props`;
-  const children = generateChildren(keys, slotKeysData);
-  return `const ${capitalizedNameFromName(
-    meta.name
-  )}: FC<${propsName}> = (${destructuredProps}) => (<>${children}</>)`;
-}
-
-function generateChildren(
-  keys: string[],
-  { slotKeys, slotTextKeys, hasOneTextProperty }: SlotKeysData
-) {
-  const children: string[] = [];
-  keys.forEach((key) => {
-    if (slotTextKeys.includes(key)) {
-      if (hasOneTextProperty) {
-        children.push("children");
-      } else {
-        children.push(propertyNameFromKey(key));
-      }
-    } else if (slotKeys.includes(key)) {
-      children.push(propertyNameFromKey(key));
+    if (
+      (hasOneTextProperty && propName === slotTextKeys[0]) ||
+      definition.hidden
+    ) {
+      return "";
     }
-  });
-  return children.map((c) => `{${c}}`).join("\n");
-}
+    const name = adapter.formatters.propertyNameFromKey(propName);
+    if (definition.type === "BOOLEAN") {
+      return `${name}?: boolean;`;
+    } else if (definition.type === "NUMBER") {
+      return `${name}?: number;`;
+    } else if (definition.type === "TEXT") {
+      return `${name}?: ${
+        slotTextKeys.includes(propName) ? "ReactNode" : "string"
+      };`;
+    } else if (definition.type === "VARIANT") {
+      const n = `${interfaceName}${adapter.formatters.capitalizedNameFromName(
+        propName
+      )}`;
+      const value = (definition.variantOptions || [])
+        .map((o) => `'${o}'`)
+        .join(" | ");
+      types[n] = value;
+      return `${name}?: ${n};`;
+    } else if (definition.type === "EXPLICIT") {
+      return `${name}?: "${definition.defaultValue}";`;
+    } else if (definition.type === "INSTANCE_SWAP") {
+      return `${name}?: ReactNode;`;
+    } else {
+      return `${name}?: ${JSON.stringify(definition)};`;
+    }
+  }
 
-function formatDefinitionInputProperty(
-  definition: SafePropertyDefinition,
-  hideDefaultValue: boolean
-): string {
-  const { name, type, defaultValue } = definition;
-  const clean = propertyNameFromKey(name);
-  if (definition.hidden) {
-    return "";
+  function formatComponentFunctionFromDefinitionsAndMetas(
+    key: string,
+    definitions: SafePropertyDefinitions,
+    metas: SafePropertyDefinitionMetaMap,
+    slotKeysData: SlotKeysData
+  ): string {
+    const { slotTextKeys, hasOneTextProperty } = slotKeysData;
+    const meta = metas[key];
+    const keys = Object.keys(definitions).sort();
+    const destructuredProps = `{
+      ${keys
+        .map((key) =>
+          hasOneTextProperty && slotTextKeys[0] === key
+            ? null
+            : formatDefinitionInputProperty(
+                definitions[key],
+                slotTextKeys.includes(key)
+              )
+        )
+        .filter(Boolean)
+        .join("\n")}
+      ${hasOneTextProperty ? "children" : ""}
+    }`;
+    const propsName = `${adapter.formatters.capitalizedNameFromName(
+      meta.name
+    )}Props`;
+    const children = generateChildren(keys, slotKeysData);
+    return `const ${adapter.formatters.capitalizedNameFromName(
+      meta.name
+    )}: FC<${propsName}> = (${destructuredProps}) => (<>${children}</>)`;
   }
-  if (
-    (definition.optional && defaultValue === "undefined") ||
-    hideDefaultValue
+
+  function generateChildren(
+    keys: string[],
+    { slotKeys, slotTextKeys, hasOneTextProperty }: SlotKeysData
   ) {
-    return `${clean},`;
+    const children: string[] = [];
+    keys.forEach((key) => {
+      if (slotTextKeys.includes(key)) {
+        if (hasOneTextProperty) {
+          children.push("children");
+        } else {
+          children.push(adapter.formatters.propertyNameFromKey(key));
+        }
+      } else if (slotKeys.includes(key)) {
+        children.push(adapter.formatters.propertyNameFromKey(key));
+      }
+    });
+    return children.map((c) => `{${c}}`).join("\n");
   }
-  if (type === "BOOLEAN") {
-    return `${clean} = ${defaultValue},`;
-  } else if (type === "INSTANCE_SWAP") {
-    const node = figma.getNodeById(defaultValue);
-    if (definition.optional && node?.name === "undefined") {
+
+  function formatDefinitionInputProperty(
+    definition: SafePropertyDefinition,
+    hideDefaultValue: boolean
+  ): string {
+    const { name, type, defaultValue } = definition;
+    const clean = adapter.formatters.propertyNameFromKey(name);
+    if (definition.hidden) {
+      return "";
+    }
+    if (
+      (definition.optional && defaultValue === "undefined") ||
+      hideDefaultValue
+    ) {
       return `${clean},`;
     }
-    return node
-      ? `${clean} = <${capitalizedNameFromName(node.name)} />,`
-      : `${clean} = "${defaultValue}",`;
-  } else if (type === "NUMBER") {
-    return `${clean}  = ${defaultValue},`;
-  } else if (type === "VARIANT") {
-    return `${clean} = "${defaultValue}",`;
-  } else {
-    return `${clean} = "${defaultValue}",`;
+    if (type === "BOOLEAN") {
+      return `${clean} = ${defaultValue},`;
+    } else if (type === "INSTANCE_SWAP") {
+      const node = figma.getNodeById(defaultValue);
+      if (definition.optional && node?.name === "undefined") {
+        return `${clean},`;
+      }
+      return node
+        ? `${clean} = <${adapter.formatters.capitalizedNameFromName(
+            node.name
+          )} />,`
+        : `${clean} = "${defaultValue}",`;
+    } else if (type === "NUMBER") {
+      return `${clean}  = ${defaultValue},`;
+    } else if (type === "VARIANT") {
+      return `${clean} = "${defaultValue}",`;
+    } else {
+      return `${clean} = "${defaultValue}",`;
+    }
   }
 }

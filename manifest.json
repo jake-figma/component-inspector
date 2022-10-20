@@ -13,6 +13,9 @@
     { "command": "react", "name": "React" },
     { "command": "vue", "name": "Vue" },
     { "command": "web", "name": "Web Components" },
-    { "command": "json", "name": "JSON" }
+    { "separator": true },
+    { "command": "json", "name": "JSON" },
+    { "separator": true },
+    { "command": "config", "name": "Configuration" }
   ]
 }

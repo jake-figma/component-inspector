@@ -13,8 +13,11 @@ export async function readSettings(): Promise<FormatSettings> {
       : {
           version: SETTINGS_VERSION,
           options: {},
+          prefixIgnore: "",
+          suffixSlot: "--SLOT",
+          valueOptional: "undefined",
         };
-  return {
+  const settings: FormatSettings = {
     version: SETTINGS_VERSION,
     options: {
       instance: [
@@ -26,7 +29,12 @@ export async function readSettings(): Promise<FormatSettings> {
     },
     tab: initial.tab,
     tabIndex: initial.tabIndex,
+    prefixIgnore: initial.prefixIgnore,
+    suffixSlot: initial.suffixSlot,
+    valueOptional: initial.valueOptional,
   };
+  writeSettings(settings);
+  return settings;
 }
 
 export async function writeSettings(settings: FormatSettings) {

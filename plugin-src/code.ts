@@ -5,7 +5,7 @@ import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
-import { FormatResult } from "../shared";
+import { FormatResult, PluginMessage } from "../shared";
 import { isFigmaCommand, readSettings, writeSettings } from "./config";
 
 initialize();
@@ -31,32 +31,29 @@ async function initialize() {
   function process() {
     const cmd = isFigmaCommand(figma.command) ? figma.command : "all";
     if (cmd === "config") {
-      figma.ui.postMessage({
-        type: "CONFIG",
-        settings,
-      });
+      const message: PluginMessage = { type: "CONFIG", settings };
+      figma.ui.postMessage(message);
 
       return;
     }
 
-    const { instance, definitionVue } = settings.options;
     const relevantNodes = componentNodesFromSceneNodes(nodes);
-    const result = adapter(relevantNodes);
+    const result = adapter(relevantNodes, settings);
     const all = cmd === "all";
     const results = [
-      (all || cmd === "angular") && formatAngular(result, instance),
-      (all || cmd === "react") && formatReact(result, instance),
-      (all || cmd === "vue") && formatVue(result, definitionVue, instance),
-      (all || cmd === "web") && formatWebComponents(result, instance),
-      (all || cmd === "json") && formatJSON(result),
+      (all || cmd === "angular") && formatAngular(result, settings),
+      (all || cmd === "react") && formatReact(result, settings),
+      (all || cmd === "vue") && formatVue(result, settings),
+      (all || cmd === "web") && formatWebComponents(result, settings),
+      (all || cmd === "json") && formatJSON(result, settings),
     ].filter(isFormatResult);
 
-    figma.ui.postMessage({
+    const message: PluginMessage = {
       type: "RESULT",
       results,
-      tab: settings.tab,
-      tabIndex: settings.tabIndex,
-    });
+      settings,
+    };
+    figma.ui.postMessage(message);
   }
 
   function run() {
@@ -66,7 +63,7 @@ async function initialize() {
   }
 
   figma.ui.onmessage = async (message) => {
-    if (message.type === "SETTINGS") {
+    if (message.type === "OPTIONS") {
       settings.tab = message.tab;
       settings.tabIndex = message.tabIndex;
       if (message.options && message.optionsKey) {
@@ -74,6 +71,11 @@ async function initialize() {
       }
       writeSettings(settings);
       process();
+    } else if (message.type === "SETTINGS") {
+      settings.prefixIgnore = message.settings.prefixIgnore;
+      settings.suffixSlot = message.settings.suffixSlot;
+      settings.valueOptional = message.settings.valueOptional;
+      writeSettings(settings);
     }
   };
 

@@ -4,7 +4,25 @@ export type FormatSettings = {
   options: { [k: string]: FormatSettingsOptions };
   tab?: string;
   tabIndex?: number;
+  prefixIgnore: string;
+  suffixSlot: string;
+  valueOptional: string;
 };
+
+export type PluginMessageType = "RESULT" | "CONFIG";
+
+interface PluginMessageResult {
+  type: Extract<PluginMessageType, "RESULT">;
+  results: FormatResult[];
+  settings: FormatSettings;
+}
+
+interface PluginMessageConfig {
+  type: Extract<PluginMessageType, "CONFIG">;
+  settings: FormatSettings;
+}
+
+export type PluginMessage = PluginMessageResult | PluginMessageConfig;
 
 export type FormatLanguage =
   | "angular"

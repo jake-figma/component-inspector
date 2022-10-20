@@ -1,6 +1,5 @@
 import { Adapter } from "./adapter";
 import { SafeComponent, SafeProperty, SafePropertyDefinitions } from "./types";
-import { slotTagFromKey } from "./utils";
 
 export interface SlotKeysData {
   slotKeys: string[];
@@ -22,6 +21,7 @@ function isVisibleKey(key: string, component: SafeComponent, adapter: Adapter) {
 }
 
 export function slotKeysFromDefinitions(
+  adapter: Adapter,
   definitions: SafePropertyDefinitions,
   enableInstanceSlots: boolean
 ): SlotKeysData {
@@ -31,7 +31,8 @@ export function slotKeysFromDefinitions(
   const hasOneTextProperty = slotTextKeys.length === 1;
   const instanceAndTextSlotKeys = Object.keys(definitions).filter(
     (key) =>
-      (definitions[key].type === "TEXT" && slotTagFromKey(key)) ||
+      (definitions[key].type === "TEXT" &&
+        adapter.formatters.slotTagFromKey(key)) ||
       (definitions[key].type === "INSTANCE_SWAP" && !definitions[key].hidden)
   );
 
@@ -46,45 +47,6 @@ export function slotKeysFromDefinitions(
     instanceAndTextSlotKeys.push(slotTextKeys[0]);
   }
 
-  return {
-    slotKeys: hasInstanceSlots
-      ? instanceAndTextSlotKeys
-      : hasOneTextProperty
-      ? slotTextKeys
-      : [],
-    slotTextKeys,
-    hasInstanceSlots,
-    hasOneTextProperty,
-  };
-}
-
-function slotKeysFromComponentAndAdapter(
-  component: SafeComponent,
-  adapter: Adapter,
-  enableInstanceSlots: boolean
-): SlotKeysData {
-  const definitions = adapter.definitions[component.definition];
-  const allTextKeys = Object.keys(component.properties).filter(
-    (key) => definitions[key].type === "TEXT"
-  );
-  const slotTextKeys = allTextKeys.filter(
-    (key) => !component.properties[key].undefined
-  );
-  const hasOneTextProperty = allTextKeys.length === 1;
-  const instanceAndTextSlotKeys = Object.keys(component.properties).filter(
-    (key) =>
-      !component.properties[key].undefined &&
-      ((definitions[key].type === "TEXT" && slotTagFromKey(key)) ||
-        (definitions[key].type === "INSTANCE_SWAP" &&
-          isVisibleKey(key, component, adapter)))
-  );
-
-  const hasInstanceSlots = Boolean(
-    instanceAndTextSlotKeys.length && enableInstanceSlots
-  );
-  if (hasOneTextProperty && hasInstanceSlots && slotTextKeys[0]) {
-    instanceAndTextSlotKeys.push(slotTextKeys[0]);
-  }
   return {
     slotKeys: hasInstanceSlots
       ? instanceAndTextSlotKeys
@@ -139,7 +101,9 @@ export function formatInstancesInstanceFromComponent(
       tag,
       key,
       slotKeys.length,
-      hasOneTextProperty && key === slotTextKeys[0] && !slotTagFromKey(key),
+      hasOneTextProperty &&
+        key === slotTextKeys[0] &&
+        !adapter.formatters.slotTagFromKey(key),
       value
     );
 
@@ -148,7 +112,7 @@ export function formatInstancesInstanceFromComponent(
       return into;
     }
     if (definitions[key].type === "TEXT") {
-      const tag = slotTagFromKey(key) || "span";
+      const tag = adapter.formatters.slotTagFromKey(key) || "span";
       into[key] = formatTag(
         key,
         tag,
@@ -183,7 +147,7 @@ export function formatInstancesInstanceFromComponent(
         !isVisibleKey(key, component, adapter)
       )
         return null;
-      const slotTag = slotTagFromKey(key);
+      const slotTag = adapter.formatters.slotTagFromKey(key);
       return attributeFormatter(
         component.properties[key],
         key,
@@ -200,4 +164,44 @@ export function formatInstancesInstanceFromComponent(
 ${slotValues.join("\n")}
 </${n}>\n`
     : `<${n} ${lines.join(" ")} />`;
+
+  function slotKeysFromComponentAndAdapter(
+    component: SafeComponent,
+    adapter: Adapter,
+    enableInstanceSlots: boolean
+  ): SlotKeysData {
+    const definitions = adapter.definitions[component.definition];
+    const allTextKeys = Object.keys(component.properties).filter(
+      (key) => definitions[key].type === "TEXT"
+    );
+    const slotTextKeys = allTextKeys.filter(
+      (key) => !component.properties[key].undefined
+    );
+    const hasOneTextProperty = allTextKeys.length === 1;
+    const instanceAndTextSlotKeys = Object.keys(component.properties).filter(
+      (key) =>
+        !component.properties[key].undefined &&
+        ((definitions[key].type === "TEXT" &&
+          adapter.formatters.slotTagFromKey(key)) ||
+          (definitions[key].type === "INSTANCE_SWAP" &&
+            isVisibleKey(key, component, adapter)))
+    );
+
+    const hasInstanceSlots = Boolean(
+      instanceAndTextSlotKeys.length && enableInstanceSlots
+    );
+    if (hasOneTextProperty && hasInstanceSlots && slotTextKeys[0]) {
+      instanceAndTextSlotKeys.push(slotTextKeys[0]);
+    }
+    return {
+      slotKeys: hasInstanceSlots
+        ? instanceAndTextSlotKeys
+        : hasOneTextProperty
+        ? slotTextKeys
+        : [],
+      slotTextKeys,
+      hasInstanceSlots,
+      hasOneTextProperty,
+    };
+  }
 }
