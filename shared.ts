@@ -25,6 +25,6 @@ export interface FormatResultItem {
     language: FormatLanguage;
     lines: string[];
   }[];
-  settings: FormatSettingsOptions;
-  settingsKey?: string;
+  options: FormatSettingsOptions;
+  optionsKey?: string;
 }

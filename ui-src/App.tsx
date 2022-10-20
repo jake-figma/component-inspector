@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { FormatResult, FormatSettingsOptions } from "../shared";
+import { FormatLanguage, FormatResult, FormatSettingsOptions } from "../shared";
 import {
   tomorrow as themeDark,
   base16AteliersulphurpoolLight as themeLight,
@@ -65,17 +65,17 @@ function App() {
                 })),
               ],
               label: item.label,
-              settings: [...item.settings],
-              settingsKey: item.settingsKey,
+              options: [...item.options],
+              optionsKey: item.optionsKey,
             })),
           };
         });
         setResultsMap(map);
         if (!tab) {
           const initialTab =
-            pluginMessage.tab && pluginMessage.tab in resultsMap
+            pluginMessage.tab && pluginMessage.tab in map
               ? pluginMessage.tab
-              : Object.values(resultsMap)[0]?.label || "";
+              : Object.values(map)[0]?.label || "";
           handleTabChange(initialTab, pluginMessage.tabIndex);
         }
       }
@@ -115,30 +115,26 @@ function App() {
 
   function sendSettings(
     overrides: {
-      settings?: FormatSettingsOptions;
+      options?: FormatSettingsOptions;
       tab?: string;
       tabIndex?: number;
     } = {}
   ) {
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: "SETTINGS",
-          settingsKey: resultItem?.settingsKey,
-          settings: overrides.settings || resultItem?.settings,
-          tab: overrides.tab || tab,
-          tabIndex:
-            overrides.tabIndex === undefined ? tabIndex : overrides.tabIndex,
-        },
-      },
-      "*"
-    );
+    const pluginMessage = {
+      type: "SETTINGS",
+      optionsKey: resultItem?.optionsKey,
+      options: overrides.options || resultItem?.options,
+      tab: overrides.tab || tab,
+      tabIndex:
+        overrides.tabIndex === undefined ? tabIndex : overrides.tabIndex,
+    };
+    parent.postMessage({ pluginMessage }, "*");
   }
 
   function renderedResult() {
     if (!resultItem) return null;
     return resultItem.code.map(({ language, lines }) => {
-      const lang = language;
+      const lang: FormatLanguage = language;
 
       const renderCode = (text: string) => (
         <SyntaxHighlighter
@@ -216,15 +212,15 @@ function App() {
         ) : null}
         {resultItem ? (
           <div>
-            {resultItem.settings.map(([label, value], i) => (
+            {resultItem.options.map(([label, value], i) => (
               <button
                 className={
                   value || Array.isArray(label) ? "brand small" : "small"
                 }
                 onClick={() => {
-                  const updated = [...resultItem.settings];
+                  const updated = [...resultItem.options];
                   updated[i][1] = value ? 0 : 1;
-                  sendSettings({ settings: updated });
+                  sendSettings({ options: updated });
                 }}
               >
                 {Array.isArray(label) ? label[value] : label}

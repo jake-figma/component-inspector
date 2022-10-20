@@ -48,10 +48,10 @@ function slotFormatter(
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettingsOptions = []
+  options: FormatSettingsOptions = []
 ): FormatResultItem {
   const { components } = adapter;
-  const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
+  const [showDefaults, explicitBoolean] = options.map((a) => Boolean(a[1]));
   const lines = Object.values(components).map((component) =>
     formatInstancesInstanceFromComponent(
       component,
@@ -72,8 +72,8 @@ function formatInstances(
         lines,
       },
     ],
-    settings,
-    settingsKey: "instance",
+    options,
+    optionsKey: "instance",
   };
 }
 
@@ -125,7 +125,7 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   return {
     label: "Definitions",
     code,
-    settings: [],
+    options: [],
   };
 }
 

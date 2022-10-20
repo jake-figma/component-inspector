@@ -39,10 +39,10 @@ export function format(
 
 function formatDefinitions(
   adapter: Adapter,
-  settings: FormatSettingsOptions = []
+  options: FormatSettingsOptions = []
 ): FormatResultItem {
   const { definitions, metas } = adapter;
-  const [isOptionsApi] = settings.map((a) => Boolean(a[1]));
+  const [isOptionsApi] = options.map((a) => Boolean(a[1]));
   const code: { language: FormatLanguage; lines: string[] }[] = [];
   const hasDefinitions = Object.keys(definitions).length;
   if (hasDefinitions) {
@@ -88,16 +88,16 @@ function formatDefinitions(
   return {
     label: "Definitions",
     code,
-    settings,
-    settingsKey: "definitionVue",
+    options,
+    optionsKey: "definitionVue",
   };
 }
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettingsOptions = []
+  options: FormatSettingsOptions = []
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
+  const [showDefaults, explicitBoolean] = options.map((a) => Boolean(a[1]));
   const { components } = adapter;
   const lines = [
     Object.values(components)
@@ -126,8 +126,8 @@ function formatInstances(
         lines,
       },
     ],
-    settings,
-    settingsKey: "instance",
+    options,
+    optionsKey: "instance",
   };
 }
 

@@ -1,15 +1,11 @@
-import {
-  FormatResult,
-  FormatResultItem,
-  FormatSettingsOptions,
-} from "../shared";
+import { FormatResult, FormatResultItem } from "../shared";
 import { Adapter } from "./adapter";
 
 export function format(adapter: Adapter): FormatResult {
   const shared: FormatResultItem = {
     label: "",
     code: [],
-    settings: [],
+    options: [],
   };
   const lines = (object: any) => [JSON.stringify(object, null, 2)];
   return {

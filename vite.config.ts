@@ -13,10 +13,7 @@ export default defineConfig({
     cssCodeSplit: false,
     outDir: "../dist",
     rollupOptions: {
-      output: {
-        inlineDynamicImports: true,
-        manualChunks: () => "everything.js",
-      },
+      output: {},
     },
   },
 });

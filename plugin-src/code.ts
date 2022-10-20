@@ -5,7 +5,8 @@ import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
-import { FormatResult, FormatSettings } from "../shared";
+import { FormatResult } from "../shared";
+import { isFigmaCommand, readSettings, writeSettings } from "./config";
 
 initialize();
 
@@ -17,47 +18,9 @@ async function initialize() {
     themeColors: true,
   });
 
-  const settingsFromStorage: FormatSettings =
-    await figma.clientStorage.getAsync("settings");
-
-  const settingsVersion = "1";
-
-  const initialSettings =
-    settingsFromStorage && settingsFromStorage.version === settingsVersion
-      ? settingsFromStorage
-      : {
-          version: settingsVersion,
-          options: {},
-        };
-  const settings: FormatSettings = {
-    version: settingsVersion,
-    options: {
-      instance: [
-        ["Default", 1],
-        ["Boolean", 0],
-      ],
-      definitionVue: [[["Composition API", "Option API"], 0]],
-      ...initialSettings.options,
-    },
-  };
+  const settings = await readSettings();
 
   const nodes: SceneNode[] = [];
-
-  type FigmaCommand = "all" | "angular" | "react" | "vue" | "web" | "json";
-  const commands: FigmaCommand[] = [
-    "all",
-    "angular",
-    "react",
-    "vue",
-    "web",
-    "json",
-  ];
-
-  function isFigmaCommand(
-    string: string | FigmaCommand
-  ): string is FigmaCommand {
-    return commands.includes(string as FigmaCommand);
-  }
 
   function isFormatResult(
     result: false | FormatResult
@@ -66,11 +29,20 @@ async function initialize() {
   }
 
   function process() {
+    const cmd = isFigmaCommand(figma.command) ? figma.command : "all";
+    if (cmd === "config") {
+      figma.ui.postMessage({
+        type: "CONFIG",
+        settings,
+      });
+
+      return;
+    }
+
+    const { instance, definitionVue } = settings.options;
     const relevantNodes = componentNodesFromSceneNodes(nodes);
     const result = adapter(relevantNodes);
-    const cmd = isFigmaCommand(figma.command) ? figma.command : "all";
     const all = cmd === "all";
-    const { instance, definitionVue } = settings.options;
     const results = [
       (all || cmd === "angular") && formatAngular(result, instance),
       (all || cmd === "react") && formatReact(result, instance),
@@ -82,8 +54,8 @@ async function initialize() {
     figma.ui.postMessage({
       type: "RESULT",
       results,
-      tab: initialSettings.tab,
-      tabIndex: initialSettings.tabIndex,
+      tab: settings.tab,
+      tabIndex: settings.tabIndex,
     });
   }
 
@@ -97,10 +69,10 @@ async function initialize() {
     if (message.type === "SETTINGS") {
       settings.tab = message.tab;
       settings.tabIndex = message.tabIndex;
-      if (message.settings && message.settingsKey) {
-        settings.options[message.settingsKey] = [...message.settings];
+      if (message.options && message.optionsKey) {
+        settings.options[message.optionsKey] = [...message.options];
       }
-      await figma.clientStorage.setAsync("settings", settings);
+      writeSettings(settings);
       process();
     }
   };

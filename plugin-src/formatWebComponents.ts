@@ -68,15 +68,15 @@ function formatDefinitions(adapter: Adapter): FormatResultItem {
   return {
     label: "Definitions",
     code,
-    settings: [],
+    options: [],
   };
 }
 
 function formatInstances(
   adapter: Adapter,
-  settings: FormatSettingsOptions
+  options: FormatSettingsOptions
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean] = settings.map((a) => Boolean(a[1]));
+  const [showDefaults, explicitBoolean] = options.map((a) => Boolean(a[1]));
   const { components } = adapter;
   const lines: string[] = [];
   Object.values(components).forEach((component) =>
@@ -103,8 +103,8 @@ function formatInstances(
         lines,
       },
     ],
-    settings,
-    settingsKey: "instance",
+    options,
+    optionsKey: "instance",
   };
 }
 
