@@ -39,6 +39,8 @@ The tagname will default to `span` if you use the suffix `--SLOT` without a tagn
 
 If your Figma component has a single text property, it will be treated as a generic slot.
 
+> This can be configured by running the Component Inspector > Configuration command.
+
 ### Boolean visibility
 
 If you have a boolean Figma component property that controls visibility of a text or instance swap property (or one of their ancestors), that boolean property will be ignored in generated code and the text or instance swap property will disappear when the boolean is false.
@@ -48,6 +50,14 @@ If you have a boolean Figma component property that controls visibility of a tex
 If you have a variant option property that defaults to the string `"undefined"`, that property will be treated as truly optional (no default).
 
 If you have an instance swap property that defaults to a component named `"undefined"`, that property will be treated as truly optional (no default).
+
+> This can be configured by running the Component Inspector > Configuration command.
+
+### Ignored property prefix
+
+You can configure the component inspector to ignore properties named with a provided prefix.
+
+> This can be configured by running the Component Inspector > Configuration command.
 
 ### Numeric variant options
 

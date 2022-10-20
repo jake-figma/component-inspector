@@ -515,10 +515,17 @@ function hyphenatedNameFromName(name: string, _settings: FormatSettings) {
     .toLowerCase();
 }
 
+function escapeRegExp(string: string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function propertyNameFromKey(name: string, settings: FormatSettings) {
   name = name.replace(/#[^#]+$/g, "");
   if (settings.suffixSlot) {
-    name = name.replace(new RegExp(`${settings.suffixSlot}.+$`, "g"), "");
+    name = name.replace(
+      new RegExp(`${escapeRegExp(settings.suffixSlot)}.+$`, "g"),
+      ""
+    );
   }
   return downcase(capitalizedNameFromName(name, settings).replace(/^\d+/g, ""));
 }
@@ -528,7 +535,7 @@ function slotTagFromKey(key: string, settings: FormatSettings) {
     return "";
   }
   const match = key.match(
-    new RegExp(`${settings.suffixSlot}(\\[([a-zA-Z0-9-]+)\\])?`)
+    new RegExp(`${escapeRegExp(settings.suffixSlot)}(\\[([a-zA-Z0-9-]+)\\])?`)
   );
   return match ? match[2] || "span" : "";
 }
