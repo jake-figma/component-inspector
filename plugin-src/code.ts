@@ -36,7 +36,7 @@ async function initialize() {
 
       return;
     }
-
+    
     const relevantNodes = componentNodesFromSceneNodes(nodes);
     const result = adapter(relevantNodes, settings);
     const all = cmd === "all";

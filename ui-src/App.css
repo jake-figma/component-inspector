@@ -30,9 +30,6 @@ pre {
   font-size: 12px;
 }
 
-main {
-}
-
 body {
   background: var(--color-bg);
   color: var(--color-text);
@@ -64,10 +61,6 @@ header > div {
   align-items: center;
   display: flex;
   gap: 0.25rem;
-}
-
-main {
-  padding: 1rem;
 }
 
 main h2 {
