@@ -5,6 +5,7 @@ import {
   FormatResult,
   FormatSettings,
   FormatSettingsOptions,
+  FormatSettingsScale,
   PluginMessage,
   PluginMessageType,
 } from "../shared";
@@ -17,19 +18,22 @@ import parserBabel from "prettier/esm/parser-babel.mjs";
 import parserHTMLCustom from "./parser-html-custom";
 import "./App.css";
 
-const prettierOptionsTS = {
-  printWidth: 60,
+const printWidthForScale = (scale: FormatSettingsScale) =>
+  scale === "sm" ? 60 : scale === "md" ? 50 : 30;
+
+const prettierOptionsTS = (scale: FormatSettingsScale) => ({
+  printWidth: printWidthForScale(scale),
   parser: "babel-ts",
   plugins: [parserBabel],
   semi: true,
-};
-const prettierOptionsHTML = {
-  printWidth: 60,
+});
+const prettierOptionsHTML = (scale: FormatSettingsScale) => ({
+  printWidth: printWidthForScale(scale),
   parser: "html",
   plugins: [parserHTMLCustom],
   htmlWhitespaceSensitivity: "ignore",
   bracketSameLine: false,
-};
+});
 
 const joiner = (items: string[]) => items.join("\n\n");
 
@@ -42,6 +46,7 @@ function App() {
   const [resultsMap, setResultsMap] = useState<{
     [k: string]: FormatResult;
   }>({});
+  const [scale, setScale] = useState<FormatSettingsScale>("sm");
   const [tab, setTab] = useState<string>();
   const [tabIndex, setTabIndex] = useState(0);
   const [theme, setTheme] = useState<{ [key: string]: React.CSSProperties }>(
@@ -73,14 +78,15 @@ function App() {
           };
         });
         setResultsMap(map);
+        const { settings } = pluginMessage;
         if (!tab) {
-          const { settings } = pluginMessage;
           const initialTab =
             settings.tab && settings.tab in map
               ? settings.tab
               : Object.values(map)[0]?.label || "";
           handleTabChange(initialTab, settings.tabIndex);
         }
+        setScale(settings.scale);
       } else if (pluginMessage.type === "CONFIG") {
         setMode("CONFIG");
         setSettings(pluginMessage.settings);
@@ -165,18 +171,18 @@ function App() {
       switch (lang) {
         case "html":
           return renderCode(
-            prettier.format(lines.join("\n"), prettierOptionsHTML)
+            prettier.format(lines.join("\n"), prettierOptionsHTML(scale))
           );
         case "vue":
           return renderCode(
             prettier.format(lines.join("\n"), {
-              ...prettierOptionsHTML,
+              ...prettierOptionsHTML(scale),
             })
           );
         case "angular":
           return renderCode(
             prettier.format(lines.join("\n"), {
-              ...prettierOptionsHTML,
+              ...prettierOptionsHTML(scale),
               parser: "angular",
             })
           );
@@ -185,14 +191,18 @@ function App() {
         case "jsx":
           const jsxString = lines
             .map((line) =>
-              prettier.format(line, prettierOptionsTS).replace(/;\n$/, "")
+              prettier
+                .format(line, prettierOptionsTS(scale))
+                .replace(/;\n$/, "")
             )
             .join("\n\n");
           return renderCode(jsxString);
         case "ts":
         case "tsx":
           const tsString = joiner(lines);
-          return renderCode(prettier.format(tsString, prettierOptionsTS));
+          return renderCode(
+            prettier.format(tsString, prettierOptionsTS(scale))
+          );
       }
     });
   }
@@ -248,14 +258,20 @@ function App() {
             </div>
           ) : null}
         </header>
-        <main>{renderedResult()}</main>
+        <main
+          style={{
+            fontSize: scale === "lg" ? 20 : scale === "md" ? 16 : 12,
+          }}
+        >
+          {renderedResult()}
+        </main>
       </>
     );
   }
 
   function renderConfig() {
     return settings ? (
-      <main>
+      <main className="padded">
         <div>
           <h2>Ignored Property Prefix</h2>
           <p>
@@ -323,6 +339,23 @@ function App() {
             }
             placeholder="Optional value"
           />
+        </div>
+        <div>
+          <h2>Scale</h2>
+          <p>Code scaling</p>
+          <select
+            value={settings.scale}
+            onChange={(e) => {
+              updateSettings({
+                ...settings,
+                scale: e.currentTarget.value as FormatSettingsScale,
+              });
+            }}
+          >
+            <option value="sm">Small</option>
+            <option value="md">Medium</option>
+            <option value="lg">Large</option>
+          </select>
         </div>
       </main>
     ) : null;

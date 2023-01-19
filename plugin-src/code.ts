@@ -36,7 +36,7 @@ async function initialize() {
 
       return;
     }
-    
+
     const relevantNodes = componentNodesFromSceneNodes(nodes);
     const result = adapter(relevantNodes, settings);
     const all = cmd === "all";
@@ -75,6 +75,7 @@ async function initialize() {
       settings.prefixIgnore = message.settings.prefixIgnore;
       settings.suffixSlot = message.settings.suffixSlot;
       settings.valueOptional = message.settings.valueOptional;
+      settings.scale = message.settings.scale;
       writeSettings(settings);
     }
   };

@@ -56,6 +56,9 @@ main,
 header {
   box-sizing: border-box;
 }
+main.padded {
+  padding: 1rem;
+}
 
 header > div {
   align-items: center;

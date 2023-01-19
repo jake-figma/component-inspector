@@ -1,10 +1,12 @@
 export type FormatSettingsOptions = [string | [string, string], 0 | 1][];
+export type FormatSettingsScale = "sm" | "md" | "lg";
 export type FormatSettings = {
   version: string;
   options: { [k: string]: FormatSettingsOptions };
   tab?: string;
   tabIndex?: number;
   prefixIgnore: string;
+  scale: FormatSettingsScale;
   suffixSlot: string;
   valueOptional: string;
 };

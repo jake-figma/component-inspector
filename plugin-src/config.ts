@@ -1,7 +1,7 @@
-import { FormatSettings } from "../shared";
+import { FormatSettings, FormatSettingsScale } from "../shared";
 
 const SETTINGS_STORAGE_KEY = "settings";
-const SETTINGS_VERSION = "2";
+const SETTINGS_VERSION = "3";
 
 export async function readSettings(): Promise<FormatSettings> {
   const saved: FormatSettings = await figma.clientStorage.getAsync(
@@ -11,11 +11,14 @@ export async function readSettings(): Promise<FormatSettings> {
     saved && saved.version === SETTINGS_VERSION
       ? saved
       : {
+          tab: undefined,
+          tabIndex: undefined,
           version: SETTINGS_VERSION,
           options: {},
           prefixIgnore: "",
           suffixSlot: "--SLOT",
           valueOptional: "undefined",
+          scale: "sm" as FormatSettingsScale,
         };
   const settings: FormatSettings = {
     version: SETTINGS_VERSION,
@@ -32,6 +35,7 @@ export async function readSettings(): Promise<FormatSettings> {
     prefixIgnore: initial.prefixIgnore,
     suffixSlot: initial.suffixSlot,
     valueOptional: initial.valueOptional,
+    scale: initial.scale,
   };
   writeSettings(settings);
   return settings;
