@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
-  FormatLanguage,
   FormatResult,
+  FormatResultItemCode,
   FormatSettings,
   FormatSettingsOptions,
   FormatSettingsScale,
@@ -18,24 +18,57 @@ import parserBabel from "prettier/esm/parser-babel.mjs";
 import parserHTMLCustom from "./parser-html-custom";
 import "./App.css";
 
-const printWidthForScale = (scale: FormatSettingsScale) =>
-  scale === "sm" ? 60 : scale === "md" ? 50 : 30;
-
-const prettierOptionsTS = (scale: FormatSettingsScale) => ({
-  printWidth: printWidthForScale(scale),
-  parser: "babel-ts",
-  plugins: [parserBabel],
-  semi: true,
-});
-const prettierOptionsHTML = (scale: FormatSettingsScale) => ({
-  printWidth: printWidthForScale(scale),
-  parser: "html",
-  plugins: [parserHTMLCustom],
-  htmlWhitespaceSensitivity: "ignore",
-  bracketSameLine: false,
-});
-
 const joiner = (items: string[]) => items.join("\n\n");
+
+function formatCode(
+  { language, lines }: FormatResultItemCode,
+  scale: FormatSettingsScale
+) {
+  const printWidthForScale = (scale: FormatSettingsScale) =>
+    scale === "sm" ? 60 : scale === "md" ? 50 : 30;
+
+  const prettierOptionsTS = (scale: FormatSettingsScale) => ({
+    printWidth: printWidthForScale(scale),
+    parser: "babel-ts",
+    plugins: [parserBabel],
+    semi: true,
+  });
+  const prettierOptionsHTML = (scale: FormatSettingsScale) => ({
+    printWidth: printWidthForScale(scale),
+    parser: "html",
+    plugins: [parserHTMLCustom],
+    htmlWhitespaceSensitivity: "ignore",
+    bracketSameLine: false,
+  });
+  switch (language) {
+    case "html":
+      return prettier.format(lines.join("\n"), prettierOptionsHTML(scale));
+
+    case "vue":
+      return prettier.format(lines.join("\n"), {
+        ...prettierOptionsHTML(scale),
+      });
+
+    case "angular":
+      return prettier.format(lines.join("\n"), {
+        ...prettierOptionsHTML(scale),
+        parser: "angular",
+      });
+
+    case "json":
+      return lines.join("\n");
+    case "jsx":
+      return lines
+        .map((line) =>
+          prettier.format(line, prettierOptionsTS(scale)).replace(/;\n$/, "")
+        )
+        .join("\n\n");
+    case "ts":
+    case "tsx":
+      const tsString = joiner(lines);
+      return prettier.format(tsString, prettierOptionsTS(scale));
+  }
+}
 
 const detectLightMode = () =>
   document.documentElement.classList.contains("figma-light");
@@ -43,6 +76,7 @@ const detectLightMode = () =>
 function App() {
   const [mode, setMode] = useState<PluginMessageType>("RESULT");
   const [settings, setSettings] = useState<FormatSettings>();
+  const [codegen, setCodegen] = useState<boolean>();
   const [resultsMap, setResultsMap] = useState<{
     [k: string]: FormatResult;
   }>({});
@@ -90,6 +124,22 @@ function App() {
       } else if (pluginMessage.type === "CONFIG") {
         setMode("CONFIG");
         setSettings(pluginMessage.settings);
+        setCodegen(Boolean(pluginMessage.codegen));
+      } else if (pluginMessage.type === "FORMAT") {
+        const result = formatCode(
+          { language: pluginMessage.language, lines: pluginMessage.lines },
+          "md"
+        );
+        parent.postMessage(
+          {
+            pluginMessage: {
+              index: pluginMessage.index,
+              result,
+              type: "FORMAT_RESULT",
+            },
+          },
+          "*"
+        );
       }
     };
 
@@ -155,56 +205,22 @@ function App() {
   function renderedResult() {
     if (!resultItem) return null;
 
-    return resultItem.code.map(({ language, lines }) => {
-      const lang: FormatLanguage = language;
-
-      const renderCode = (text: string) => (
-        <SyntaxHighlighter
-          customStyle={{ margin: 0 }}
-          language={lang === "vue" ? "tsx" : lang === "angular" ? "html" : lang}
-          style={theme}
-        >
-          {text}
-        </SyntaxHighlighter>
-      );
-
-      switch (lang) {
-        case "html":
-          return renderCode(
-            prettier.format(lines.join("\n"), prettierOptionsHTML(scale))
-          );
-        case "vue":
-          return renderCode(
-            prettier.format(lines.join("\n"), {
-              ...prettierOptionsHTML(scale),
-            })
-          );
-        case "angular":
-          return renderCode(
-            prettier.format(lines.join("\n"), {
-              ...prettierOptionsHTML(scale),
-              parser: "angular",
-            })
-          );
-        case "json":
-          return renderCode(lines.join("\n"));
-        case "jsx":
-          const jsxString = lines
-            .map((line) =>
-              prettier
-                .format(line, prettierOptionsTS(scale))
-                .replace(/;\n$/, "")
-            )
-            .join("\n\n");
-          return renderCode(jsxString);
-        case "ts":
-        case "tsx":
-          const tsString = joiner(lines);
-          return renderCode(
-            prettier.format(tsString, prettierOptionsTS(scale))
-          );
-      }
-    });
+    return resultItem.code.map(({ language, lines }, i) => (
+      <SyntaxHighlighter
+        customStyle={{ margin: 0 }}
+        language={
+          language === "vue"
+            ? "tsx"
+            : language === "angular"
+            ? "html"
+            : language
+        }
+        key={i}
+        style={theme}
+      >
+        {formatCode({ language, lines }, scale)}
+      </SyntaxHighlighter>
+    ));
   }
 
   function renderResults() {
@@ -340,23 +356,27 @@ function App() {
             placeholder="Optional value"
           />
         </div>
-        <div>
-          <h2>Scale</h2>
-          <p>Code scaling</p>
-          <select
-            value={settings.scale}
-            onChange={(e) => {
-              updateSettings({
-                ...settings,
-                scale: e.currentTarget.value as FormatSettingsScale,
-              });
-            }}
-          >
-            <option value="sm">Small</option>
-            <option value="md">Medium</option>
-            <option value="lg">Large</option>
-          </select>
-        </div>
+        {codegen ? null : (
+          <div className="row">
+            <div>
+              <h2>Scale</h2>
+              <p>Code scaling</p>
+              <select
+                value={settings.scale}
+                onChange={(e) => {
+                  updateSettings({
+                    ...settings,
+                    scale: e.currentTarget.value as FormatSettingsScale,
+                  });
+                }}
+              >
+                <option value="sm">Small</option>
+                <option value="md">Medium</option>
+                <option value="lg">Large</option>
+              </select>
+            </div>
+          </div>
+        )}
       </main>
     ) : null;
   }

@@ -2,10 +2,56 @@
   "name": "Component Inspector",
   "id": "1162860898904210114",
   "api": "1.0.0",
-  "editorType": ["figma", "figjam"],
+  "editorType": ["dev", "figma"],
+  "capabilities": ["codegen"],
   "permissions": [],
   "main": "dist/code.js",
   "ui": "dist/index.html",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  },
+  "codegenLanguages": [
+    { "label": "Angular", "value": "angular" },
+    { "label": "React", "value": "react" },
+    { "label": "Vue: Composition API", "value": "vue-composition" },
+    { "label": "Vue: Options API", "value": "vue-options" },
+    { "label": "Web Components", "value": "web" },
+    { "label": "JSON", "value": "json" }
+  ],
+  "codegenPreferences": [
+    {
+      "itemType": "select",
+      "propertyName": "boolean",
+      "label": "Boolean properties on instances",
+      "options": [
+        { "label": "Implicit", "value": "implicit", "isDefault": true },
+        { "label": "Explicit", "value": "explicit" }
+      ]
+    },
+    {
+      "itemType": "select",
+      "propertyName": "comments",
+      "label": "Comment generation in definitions",
+      "options": [
+        { "label": "Disabled", "value": "disabled", "isDefault": true },
+        { "label": "Enabled", "value": "enabled" }
+      ]
+    },
+    {
+      "itemType": "select",
+      "propertyName": "defaults",
+      "label": "Default values on instances",
+      "options": [
+        { "label": "Shown", "value": "shown", "isDefault": true },
+        { "label": "Hidden", "value": "hidden" }
+      ]
+    },
+    {
+      "itemType": "action",
+      "propertyName": "settings",
+      "label": "More Settings"
+    }
+  ],
   "menu": [
     { "command": "all", "name": "All" },
     { "separator": true },

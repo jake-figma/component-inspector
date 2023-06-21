@@ -16,6 +16,7 @@ import {
   SlotKeysData,
   slotKeysFromDefinitions,
 } from "./formatShared";
+import { generateBooleans, generateComments, generateDefaults } from "./config";
 
 type TypeDefinitionsObject = { [k: string]: string };
 
@@ -37,9 +38,13 @@ function formatInstances(
   settings: FormatSettings
 ): FormatResultItem {
   const { components } = adapter;
-  const [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
+  let [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
     Boolean(a[1])
   );
+  showDefaults =
+    generateDefaults() === null ? showDefaults : Boolean(generateDefaults());
+  explicitBoolean =
+    generateDefaults() === null ? explicitBoolean : Boolean(generateBooleans());
   const lines = Object.values(components).map((component) =>
     formatInstancesInstanceFromComponent(
       component,
@@ -53,7 +58,7 @@ function formatInstances(
     )
   );
   return {
-    label: "Instances",
+    label: settings.singleNode ? "Instance" : "Instances",
     code: [
       {
         language: "jsx",
@@ -114,9 +119,15 @@ function formatDefinitions(
 ): FormatResultItem {
   const { definitions, metas } = adapter;
   const hasDefinitions = Object.keys(definitions).length;
-  const code: { language: FormatLanguage; lines: string[] }[] = hasDefinitions
-    ? [{ language: "ts", lines: [`import { FC, ReactNode, } from "react";`] }]
-    : [];
+  const code: { language: FormatLanguage; lines: string[] }[] =
+    hasDefinitions && !settings.singleNode
+      ? [
+          {
+            language: "tsx",
+            lines: [`import { FC, ReactNode, } from "react";`],
+          },
+        ]
+      : [];
   Object.keys(definitions).forEach((key) => {
     const types: TypeDefinitionsObject = {};
     const properties = definitions[key];
@@ -142,7 +153,10 @@ function formatDefinitions(
       language: "tsx",
       lines: [
         [
-          adapter.formatters.componentJsCommentFromMeta(metas[key]),
+          settings.singleNode ? `import { FC, ReactNode, } from "react";` : "",
+          generateComments()
+            ? adapter.formatters.componentJsCommentFromMeta(metas[key])
+            : "",
           Object.keys(types)
             .map((name) => `type ${name} = ${types[name]};`)
             .join("\n"),
@@ -159,7 +173,7 @@ function formatDefinitions(
   });
 
   return {
-    label: "Definitions",
+    label: settings.singleNode ? "Definition" : "Definitions",
     code,
     options: [],
   };

@@ -16,6 +16,7 @@ import {
   SlotKeysData,
   slotKeysFromDefinitions,
 } from "./formatShared";
+import { generateBooleans, generateComments, generateDefaults } from "./config";
 
 export function format(
   adapter: Adapter,
@@ -32,16 +33,20 @@ export function format(
 
 function formatDefinitions(
   adapter: Adapter,
-  _settings: FormatSettings
+  settings: FormatSettings
 ): FormatResultItem {
   const { definitions, metas } = adapter;
-  const code: { language: FormatLanguage; lines: string[] }[] = [];
+  const code: { label?: string; language: FormatLanguage; lines: string[] }[] =
+    [];
   Object.entries(definitions).forEach(([key, definition]) => {
     const slotKeysData = slotKeysFromDefinitions(adapter, definition, true);
     code.push({
+      label: "Class",
       language: "ts",
       lines: [
-        adapter.formatters.componentJsCommentFromMeta(metas[key]),
+        generateComments()
+          ? adapter.formatters.componentJsCommentFromMeta(metas[key])
+          : "",
         formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
           "\n"
         ),
@@ -54,18 +59,21 @@ function formatDefinitions(
       ],
     });
     code.push({
+      label: "Template",
       language: "html",
       lines: [
-        `<!-- ${adapter.formatters.capitalizedNameFromName(
-          metas[key].name
-        )} Template -->`,
+        !generateComments() || settings.singleNode
+          ? ""
+          : `<!-- ${adapter.formatters.capitalizedNameFromName(
+              metas[key].name
+            )} Template -->`,
         "\n",
         ...formatDefinitionsTemplate(key, metas, slotKeysData),
       ],
     });
   });
   return {
-    label: "Definitions",
+    label: settings.singleNode ? "Definition" : "Definitions",
     code,
     options: [],
   };
@@ -167,7 +175,7 @@ function formatDefinitions(
   ): string[] {
     const types: string[] = [];
     Object.entries(definitions).forEach(([key, definition]) => {
-      if (definition.type === "VARIANT") {
+      if (definition.type === "VARIANT" && !definition.hidden) {
         types.push(
           `type ${typeNameForComponentProperty(
             componentName,
@@ -190,9 +198,13 @@ function formatInstances(
   adapter: Adapter,
   settings: FormatSettings
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
+  let [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
     Boolean(a[1])
   );
+  showDefaults =
+    generateDefaults() === null ? showDefaults : Boolean(generateDefaults());
+  explicitBoolean =
+    generateDefaults() === null ? explicitBoolean : Boolean(generateBooleans());
   const { components } = adapter;
   const lines: string[] = [];
   Object.values(components).forEach((component) =>
@@ -212,7 +224,7 @@ function formatInstances(
     )
   );
   return {
-    label: "Instances",
+    label: settings.singleNode ? "Instance" : "Instances",
     code: [
       {
         language: "html",

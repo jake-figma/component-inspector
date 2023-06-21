@@ -5,10 +5,147 @@ import { format as formatReact } from "./formatReact";
 import { format as formatJSON } from "./formatJSON";
 import { format as formatVue } from "./formatVue";
 import { format as formatWebComponents } from "./formatWebComponents";
-import { FormatResult, PluginMessage } from "../shared";
+import { FormatLanguage, FormatResult, PluginMessage } from "../shared";
 import { isFigmaCommand, readSettings, writeSettings } from "./config";
 
-initialize();
+if (figma.mode === "codegen") {
+  initializeCodegen();
+} else {
+  initialize();
+}
+
+async function initializeCodegen() {
+  let watching: { [id: string]: boolean } = {};
+  figma.codegen.on("generate", (event) => {
+    const { node } = event;
+    const main = node.mainComponent;
+    const parent = node.parent;
+    watching = {};
+    switch (node.type) {
+      case "INSTANCE":
+        watching[node.id] = true;
+        if (main) watching[main.id] = true;
+        if (main?.parent) watching[main.parent.id] = true;
+        break;
+      case "COMPONENT":
+        watching[node.id] = true;
+        if (parent) watching[parent.id] = true;
+        break;
+      case "COMPONENT_SET":
+        watching[node.id] = true;
+        break;
+    }
+    return runCodegen(event);
+  });
+  figma.on("documentchange", ({ documentChanges }) => {
+    if (documentChanges.find(({ id }) => watching[id])) {
+      figma.codegen.refresh();
+    }
+  });
+  figma.codegen.on("preferenceschange", async (event) => {
+    if (event.propertyName === "settings") {
+      figma.showUI(__html__, {
+        visible: true,
+        width: 500,
+        height: 500,
+        themeColors: true,
+      });
+      const settings = await readSettings();
+      const message: PluginMessage = {
+        type: "CONFIG",
+        settings,
+        codegen: true,
+      };
+      figma.ui.postMessage(message);
+      figma.ui.onmessage = async (message) => {
+        if (message.type === "SETTINGS") {
+          settings.prefixIgnore = message.settings.prefixIgnore;
+          settings.suffixSlot = message.settings.suffixSlot;
+          settings.valueOptional = message.settings.valueOptional;
+          settings.scale = message.settings.scale;
+          writeSettings(settings);
+        }
+      };
+    }
+  });
+}
+
+async function runCodegen({ node, language }) {
+  const settings = await readSettings();
+  const relevantNodes = componentNodesFromSceneNodes([node]);
+  if (!relevantNodes.length)
+    return [
+      {
+        title: "Component Inspector",
+        code: "Select a component",
+        language: "PLAINTEXT",
+      },
+    ];
+  return new Promise((resolve, reject) => {
+    settings.singleNode = true;
+    const result = adapter(relevantNodes, settings);
+    const things = [];
+    if (language === "angular") {
+      things.push(formatAngular(result, settings));
+    } else if (language === "react") {
+      things.push(formatReact(result, settings));
+    } else if (language === "vue-composition") {
+      settings.options.definitionVue[0][1] = 0;
+      writeSettings(settings);
+      things.push(formatVue(result, settings));
+    } else if (language === "vue-options") {
+      settings.options.definitionVue[0][1] = 1;
+      writeSettings(settings);
+      things.push(formatVue(result, settings));
+    } else if (language === "json") {
+      things.push(formatJSON(result, settings));
+    } else if (language === "web") {
+      things.push(formatWebComponents(result, settings));
+    }
+    const readyToFormat: {
+      lines: string[];
+      language: FormatLanguage;
+      title: string;
+    }[] = [];
+    things.forEach(({ label, items }) => {
+      items.forEach(({ label: itemLabel, code }) => {
+        code.forEach(({ label, language, lines }) => {
+          readyToFormat.push({
+            language,
+            lines,
+            title: itemLabel + (label ? `: ${label}` : ""),
+          });
+        });
+      });
+    });
+    let promiseCount = readyToFormat.length;
+    const results: { title: string; code: string; language: string }[] = [];
+    figma.showUI(__html__, { visible: false });
+    figma.ui.onmessage = (message) => {
+      if (message.type === "FORMAT_RESULT") {
+        const item = readyToFormat[message.index];
+        results.push({
+          title: item.title,
+          code: message.result,
+          language: ["vue", "angular", "html", "jsx"].includes(item.language)
+            ? "HTML"
+            : item.language === "json"
+            ? "JSON"
+            : "TYPESCRIPT",
+        });
+        promiseCount--;
+        if (promiseCount <= 0) {
+          resolve(results);
+        }
+      }
+    };
+
+    readyToFormat.forEach(({ lines, language }, index) => {
+      const message: PluginMessage = { type: "FORMAT", lines, language, index };
+      figma.ui.postMessage(message);
+    });
+  });
+}
 
 async function initialize() {
   figma.showUI(__html__, {
@@ -76,6 +213,7 @@ async function initialize() {
       settings.suffixSlot = message.settings.suffixSlot;
       settings.valueOptional = message.settings.valueOptional;
       settings.scale = message.settings.scale;
+      console.log(settings);
       writeSettings(settings);
     }
   };

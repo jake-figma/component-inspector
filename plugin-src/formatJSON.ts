@@ -3,7 +3,7 @@ import { Adapter } from "./adapter";
 
 export function format(
   adapter: Adapter,
-  _settings: FormatSettings
+  settings: FormatSettings
 ): FormatResult {
   const shared: FormatResultItem = {
     label: "",
@@ -11,34 +11,43 @@ export function format(
     options: [],
   };
   const lines = (object: any) => [JSON.stringify(object, null, 2)];
+  const items: FormatResultItem[] = settings.singleNode
+    ? [
+        {
+          ...shared,
+          label: "Component Inspector JSON Schema",
+          code: [{ language: "json", lines: lines(adapter) }],
+        },
+      ]
+    : [
+        {
+          ...shared,
+          label: "All",
+          code: [{ language: "json", lines: lines(adapter) }],
+        },
+        {
+          ...shared,
+          label: "Definitions",
+          code: [{ language: "json", lines: lines(adapter.definitions) }],
+        },
+        {
+          ...shared,
+          label: "Components",
+          code: [{ language: "json", lines: lines(adapter.components) }],
+        },
+        {
+          ...shared,
+          label: "References",
+          code: [{ language: "json", lines: lines(adapter.references) }],
+        },
+        {
+          ...shared,
+          label: "Metas",
+          code: [{ language: "json", lines: lines(adapter.metas) }],
+        },
+      ];
   return {
     label: "JSON",
-    items: [
-      {
-        ...shared,
-        label: "All",
-        code: [{ language: "json", lines: lines(adapter) }],
-      },
-      {
-        ...shared,
-        label: "Definitions",
-        code: [{ language: "json", lines: lines(adapter.definitions) }],
-      },
-      {
-        ...shared,
-        label: "Components",
-        code: [{ language: "json", lines: lines(adapter.components) }],
-      },
-      {
-        ...shared,
-        label: "References",
-        code: [{ language: "json", lines: lines(adapter.references) }],
-      },
-      {
-        ...shared,
-        label: "Metas",
-        code: [{ language: "json", lines: lines(adapter.metas) }],
-      },
-    ],
+    items,
   };
 }

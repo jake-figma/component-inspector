@@ -3,6 +3,19 @@ import { FormatSettings, FormatSettingsScale } from "../shared";
 const SETTINGS_STORAGE_KEY = "settings";
 const SETTINGS_VERSION = "3";
 
+export function generateBooleans() {
+  if (figma.editorType !== "dev") return null;
+  return figma.codegen?.preferences?.customSettings?.boolean === "explicit";
+}
+export function generateComments() {
+  if (figma.editorType !== "dev") return true;
+  return figma.codegen?.preferences?.customSettings?.comments === "enabled";
+}
+export function generateDefaults() {
+  if (figma.editorType !== "dev") return null;
+  return figma.codegen?.preferences?.customSettings?.defaults === "shown";
+}
+
 export async function readSettings(): Promise<FormatSettings> {
   const saved: FormatSettings = await figma.clientStorage.getAsync(
     SETTINGS_STORAGE_KEY

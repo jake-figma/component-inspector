@@ -16,6 +16,7 @@ import {
   SlotKeysData,
   slotKeysFromDefinitions,
 } from "./formatShared";
+import { generateBooleans, generateComments, generateDefaults } from "./config";
 
 type TypeDefinitionsObject = { [k: string]: string };
 
@@ -40,17 +41,18 @@ function formatDefinitions(
   const [isOptionsApi] = settings.options.definitionVue.map((a) =>
     Boolean(a[1])
   );
-  const code: { language: FormatLanguage; lines: string[] }[] = [];
+  const code: { label?: string; language: FormatLanguage; lines: string[] }[] =
+    [];
   const hasDefinitions = Object.keys(definitions).length;
-  if (hasDefinitions) {
+  if (hasDefinitions && !settings.singleNode) {
     if (isOptionsApi) {
       code.push({
-        language: "ts",
+        language: "tsx",
         lines: ["import { defineComponent, type PropType } from 'vue'"],
       });
     } else {
       code.push({
-        language: "ts",
+        language: "tsx",
         lines: ["import { defineProps, withDefaults } from 'vue'"],
       });
     }
@@ -59,9 +61,16 @@ function formatDefinitions(
   Object.keys(definitions).forEach((key) => {
     const properties = definitions[key];
     const slotKeysData = slotKeysFromDefinitions(adapter, properties, true);
+    const comment = settings.singleNode
+      ? isOptionsApi
+        ? "import { defineComponent, type PropType } from 'vue'"
+        : "import { defineProps, withDefaults } from 'vue'"
+      : "";
     code.push({
+      label: isOptionsApi ? "Options API" : "Composition API",
       language: "tsx",
       lines: [
+        comment,
         isOptionsApi
           ? formatDefinitionsLineForOptionsAPI(
               key,
@@ -78,12 +87,13 @@ function formatDefinitions(
       ],
     });
     code.push({
+      label: "Template",
       language: "html",
       lines: formatDefinitionsTemplate(key, metas, slotKeysData),
     });
   });
   return {
-    label: "Definitions",
+    label: settings.singleNode ? "Definition" : "Definitions",
     code,
     options: settings.options.definitionVue,
     optionsKey: "definitionVue",
@@ -118,7 +128,9 @@ function formatDefinitions(
       `}`,
     ];
     return [
-      adapter.formatters.componentJsCommentFromMeta(metas[key]),
+      generateComments()
+        ? adapter.formatters.componentJsCommentFromMeta(metas[key])
+        : "",
       "",
       ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
       "",
@@ -156,7 +168,12 @@ function formatDefinitions(
       )
       .filter(Boolean);
     return [
-      adapter.formatters.componentJsCommentFromMeta(metas[key], " .vue setup"),
+      generateComments()
+        ? adapter.formatters.componentJsCommentFromMeta(
+            metas[key],
+            " .vue setup"
+          )
+        : "",
       "",
       ...Object.keys(types).map((name) => `type ${name} = ${types[name]};`),
       "",
@@ -221,9 +238,11 @@ function formatDefinitions(
     );
 
     return [
-      `<!-- ${adapter.formatters.capitalizedNameFromName(
-        meta.name
-      )} Template -->`,
+      !generateComments() || settings.singleNode
+        ? ""
+        : `<!-- ${adapter.formatters.capitalizedNameFromName(
+            meta.name
+          )} Template -->`,
       "\n",
       `<div id="template-${adapter.formatters.hyphenatedNameFromName(
         meta.name
@@ -351,9 +370,13 @@ function formatInstances(
   adapter: Adapter,
   settings: FormatSettings
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
+  let [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
     Boolean(a[1])
   );
+  showDefaults =
+    generateDefaults() === null ? showDefaults : Boolean(generateDefaults());
+  explicitBoolean =
+    generateDefaults() === null ? explicitBoolean : Boolean(generateBooleans());
   const { components } = adapter;
   const lines = [
     Object.values(components)
@@ -375,7 +398,7 @@ function formatInstances(
       .join("\n\n"),
   ];
   return {
-    label: "Instances",
+    label: settings.singleNode ? "Instance" : "Instances",
     code: [
       {
         language: "vue",

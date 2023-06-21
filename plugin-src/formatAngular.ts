@@ -15,23 +15,26 @@ import {
   formatInstancesInstanceFromComponent,
   slotKeysFromDefinitions,
 } from "./formatShared";
+import { generateBooleans, generateComments, generateDefaults } from "./config";
 
 export function format(
   adapter: Adapter,
   settings: FormatSettings
 ): FormatResult {
+  const items = [];
+  items.push(
+    formatInstances(adapter, settings),
+    formatDefinitions(adapter, settings)
+  );
   return {
     label: "Angular",
-    items: [
-      formatInstances(adapter, settings),
-      formatDefinitions(adapter, settings),
-    ],
+    items,
   };
 }
 
 function formatDefinitions(
   adapter: Adapter,
-  _settings: FormatSettings
+  settings: FormatSettings
 ): FormatResultItem {
   const { definitions, metas } = adapter;
   const code: { language: FormatLanguage; lines: string[] }[] = [];
@@ -39,7 +42,9 @@ function formatDefinitions(
     code.push({
       language: "ts",
       lines: [
-        adapter.formatters.componentJsCommentFromMeta(metas[key]),
+        generateComments()
+          ? adapter.formatters.componentJsCommentFromMeta(metas[key])
+          : "",
         formatDefinitionsVariantOptionTypes(metas[key].name, definition).join(
           "\n"
         ),
@@ -48,7 +53,7 @@ function formatDefinitions(
     });
   });
   return {
-    label: "Definitions",
+    label: settings.singleNode ? "Definition" : "Definitions",
     code,
     options: [],
   };
@@ -140,7 +145,7 @@ function formatDefinitions(
   ): string[] {
     const types: string[] = [];
     Object.entries(definitions).forEach(([key, definition]) => {
-      if (definition.type === "VARIANT") {
+      if (definition.type === "VARIANT" && !definition.hidden) {
         types.push(
           `type ${typeNameForComponentProperty(
             componentName,
@@ -163,9 +168,13 @@ function formatInstances(
   adapter: Adapter,
   settings: FormatSettings
 ): FormatResultItem {
-  const [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
+  let [showDefaults, explicitBoolean] = settings.options.instance.map((a) =>
     Boolean(a[1])
   );
+  showDefaults =
+    generateDefaults() === null ? showDefaults : Boolean(generateDefaults());
+  explicitBoolean =
+    generateDefaults() === null ? explicitBoolean : Boolean(generateBooleans());
 
   const { components } = adapter;
   const lines: string[] = [];
@@ -186,7 +195,7 @@ function formatInstances(
     )
   );
   return {
-    label: "Instances",
+    label: settings.singleNode ? "Instance" : "Instances",
     code: [
       {
         language: "angular",

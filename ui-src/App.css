@@ -69,12 +69,17 @@ header > div {
 main h2 {
   margin-bottom: 0.5rem;
 }
-main div + div {
+main > div + div {
   margin-top: 1.5rem;
 }
-main input {
+main input:not([type="checkbox"]) {
   display: block;
   width: 100%;
+}
+
+main div.row {
+  display: flex;
+  gap: 1rem;
 }
 
 h1,
