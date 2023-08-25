@@ -18,7 +18,7 @@ async function initializeCodegen() {
   let watching: { [id: string]: boolean } = {};
   figma.codegen.on("generate", (event) => {
     const { node } = event;
-    const main = node.mainComponent;
+    const main = "mainComponent" in node ? node.mainComponent : null;
     const parent = node.parent;
     watching = {};
     switch (node.type) {
@@ -70,18 +70,24 @@ async function initializeCodegen() {
   });
 }
 
-async function runCodegen({ node, language }) {
+// defaulting to angular because due to a bug, the default language is missing when run from search panel
+async function runCodegen({
+  node,
+  language,
+}: CodegenEvent): Promise<CodegenResult[]> {
   const settings = await readSettings();
   const relevantNodes = componentNodesFromSceneNodes([node]);
-  if (!relevantNodes.length)
-    return [
-      {
-        title: "Component Inspector",
-        code: "Select a component",
-        language: "PLAINTEXT",
-      },
-    ];
   return new Promise((resolve, reject) => {
+    if (!relevantNodes.length) {
+      return resolve([
+        {
+          title: "Component Inspector",
+          code: "Select a component",
+          language: "PLAINTEXT",
+        },
+      ]);
+    }
+    language = language || "angular";
     settings.singleNode = true;
     const result = adapter(relevantNodes, settings);
     const things = [];
@@ -104,27 +110,27 @@ async function runCodegen({ node, language }) {
     }
     const readyToFormat: {
       lines: string[];
-      language: FormatLanguage;
+      language: string;
       title: string;
     }[] = [];
     things.forEach(({ label, items }) => {
       items.forEach(({ label: itemLabel, code }) => {
         code.forEach(({ label, language, lines }) => {
           readyToFormat.push({
-            language,
             lines,
+            language,
             title: itemLabel + (label ? `: ${label}` : ""),
           });
         });
       });
     });
     let promiseCount = readyToFormat.length;
-    const results: { title: string; code: string; language: string }[] = [];
+    const results: CodegenResult[] = [];
     figma.showUI(__html__, { visible: false });
     figma.ui.onmessage = (message) => {
       if (message.type === "FORMAT_RESULT") {
         const item = readyToFormat[message.index];
-        results.push({
+        const result: CodegenResult = {
           title: item.title,
           code: message.result,
           language: ["vue", "angular", "html", "jsx"].includes(item.language)
@@ -132,16 +138,25 @@ async function runCodegen({ node, language }) {
             : item.language === "json"
             ? "JSON"
             : "TYPESCRIPT",
-        });
+        };
+        results.push(result);
         promiseCount--;
         if (promiseCount <= 0) {
           resolve(results);
         }
       }
     };
+    if (promiseCount === 0) {
+      return resolve([]);
+    }
 
     readyToFormat.forEach(({ lines, language }, index) => {
-      const message: PluginMessage = { type: "FORMAT", lines, language, index };
+      const message: PluginMessage = {
+        type: "FORMAT",
+        lines,
+        language: language as FormatLanguage,
+        index,
+      };
       figma.ui.postMessage(message);
     });
   });

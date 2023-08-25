@@ -438,7 +438,11 @@ export function adapter(
                 }
               }
             }
-          } else if (ancestorVisible && node.type === "INSTANCE") {
+          } else if (
+            ancestorVisible &&
+            node.type === "INSTANCE" &&
+            mainComponent
+          ) {
             // handling nested instance
             allReferences.visibleNodes[node.id] = ancestorVisible;
             allReferences.properties[ancestorVisible].visibleProperties = {
