@@ -271,7 +271,7 @@ function formatDefinitions(
     } else if (type === "INSTANCE_SWAP") {
       const node = figma.getNodeById(defaultValue);
       const value = node
-        ? node.name === "undefined"
+        ? node.name === settings.valueOptional
           ? ""
           : `default: "${adapter.formatters.capitalizedNameFromName(
               node.name
@@ -297,7 +297,7 @@ function formatDefinitions(
       return `${clean}: {
         type: Object as PropType<${n}>,
         ${
-          optional && defaultValue === "undefined"
+          optional && defaultValue === settings.valueOptional
             ? ""
             : `default: "${defaultValue}",`
         } 
@@ -341,14 +341,14 @@ function formatDefinitions(
     if (definition.hidden) {
       return "";
     }
-    if (definition.optional && defaultValue === "undefined") {
+    if (definition.optional && defaultValue === settings.valueOptional) {
       return `${clean},`;
     }
     if (type === "BOOLEAN") {
       return `${clean}: ${defaultValue},`;
     } else if (type === "INSTANCE_SWAP") {
       const node = figma.getNodeById(defaultValue);
-      if (definition.optional && node?.name === "undefined") {
+      if (definition.optional && node?.name === settings.valueOptional) {
         return `${clean},`;
       }
       return node

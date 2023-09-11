@@ -148,7 +148,7 @@ function formatDefinitions(
     } else if (type === "INSTANCE_SWAP") {
       const node = figma.getNodeById(defaultValue);
       const value = node
-        ? node.name === "undefined"
+        ? node.name === settings.valueOptional
           ? ""
           : ` = "${adapter.formatters.capitalizedNameFromName(node.name)}";`
         : ` = "${defaultValue}"`;
@@ -162,7 +162,9 @@ function formatDefinitions(
         componentName,
         name
       )}${
-        optional && defaultValue === "undefined" ? "" : ` = "${defaultValue}";`
+        optional && defaultValue === settings.valueOptional
+          ? ""
+          : ` = "${defaultValue}";`
       }`;
     } else {
       return `public ${clean}?: string  = "${defaultValue}";`;

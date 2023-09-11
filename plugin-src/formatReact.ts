@@ -279,7 +279,7 @@ function formatDefinitions(
       return "";
     }
     if (
-      (definition.optional && defaultValue === "undefined") ||
+      (definition.optional && defaultValue === settings.valueOptional) ||
       hideDefaultValue
     ) {
       return `${clean},`;
@@ -288,7 +288,7 @@ function formatDefinitions(
       return `${clean} = ${defaultValue},`;
     } else if (type === "INSTANCE_SWAP") {
       const node = figma.getNodeById(defaultValue);
-      if (definition.optional && node?.name === "undefined") {
+      if (definition.optional && node?.name === settings.valueOptional) {
         return `${clean},`;
       }
       return node

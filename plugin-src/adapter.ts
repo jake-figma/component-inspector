@@ -128,8 +128,13 @@ export function adapter(
   ): SafePropertyDefinition {
     const definition = componentPropertyDefinitions[key];
     const { type } = definition;
-    const variantOptions = definition.variantOptions || [];
-    const rawValue = `${definition.defaultValue}`;
+    const variantOptions = (definition.variantOptions || []).map((option) =>
+      optionNameFromVariant(option, settings)
+    );
+    const rawValue =
+      type === "VARIANT"
+        ? optionNameFromVariant(`${definition.defaultValue}`, settings)
+        : `${definition.defaultValue}`;
     const name = propertyNameFromKey(key, settings);
     const hidden =
       settings.prefixIgnore &&
@@ -285,7 +290,7 @@ export function adapter(
           value: valueString,
           undefined:
             definition.optional &&
-            figma.getNodeById(valueString)?.name === "undefined",
+            figma.getNodeById(valueString)?.name === settings.valueOptional,
           default: valueString === defaultValue,
         };
       case "TEXT":
@@ -306,8 +311,9 @@ export function adapter(
         return {
           name,
           type,
-          value: valueString,
-          undefined: definition.optional && valueString === "undefined",
+          value: optionNameFromVariant(valueString, settings),
+          undefined:
+            definition.optional && valueString === settings.valueOptional,
           default: valueString === defaultValue,
         };
     }
@@ -508,6 +514,7 @@ function capitalizedNameFromName(name: string, _settings: FormatSettings) {
     .map(capitalize)
     .join("");
 }
+
 function hyphenatedNameFromName(name: string, _settings: FormatSettings) {
   name = numericGuard(name);
   return name
@@ -532,6 +539,26 @@ function propertyNameFromKey(name: string, settings: FormatSettings) {
     );
   }
   return downcase(capitalizedNameFromName(name, settings).replace(/^\d+/g, ""));
+}
+
+function optionNameFromVariant(name: string, settings: FormatSettings) {
+  const clean = name.replace(/[^a-zA-Z\d-_ ]/g, "");
+  if (clean.match("-")) {
+    return clean.replace(/ +/g, "-").toLowerCase();
+  } else if (clean.match("_")) {
+    return clean.replace(/ +/g, "_").toLowerCase();
+  } else if (clean.match(" ") || clean.match(/^[A-Z]/)) {
+    return clean
+      .split(/ +/)
+      .map((a, i) => {
+        let text =
+          i > 0
+            ? `${a.charAt(0).toUpperCase()}${a.substring(1).toLowerCase()}`
+            : a.toLowerCase();
+        return text;
+      })
+      .join("");
+  } else return clean;
 }
 
 function slotTagFromKey(key: string, settings: FormatSettings) {
